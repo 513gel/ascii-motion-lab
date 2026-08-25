@@ -2,11 +2,21 @@
   const $ = (id) => document.getElementById(id);
   const out = $("output"), ctx = out.getContext("2d"), sample = document.createElement("canvas"), sctx = sample.getContext("2d", { willReadFrequently:true });
   const fileInput=$("file-input"), drop=$("drop-zone"), empty=$("empty-state"), status=$("source-status"), transport=$("transport-status");
-  const ui = { mode:$("mode"), size:$("cell-size"), duration:$("duration"), charset:$("charset"), brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), sourceColor:$("source-color"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"), foreground:$("foreground"), background:$("background"), effect:$("effect"), effectPower:$("effect-power"), prompt:$("prompt") };
-  const state = { media:null, fileURL:null, sourceKind:null, playing:true, started:performance.now(), imageReady:false, recording:false, analyserW:0, analyserH:0 };
-  const outputNames={size:"cell-size-out",duration:"duration-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out"};
+  const ui = { mode:$("mode"), size:$("cell-size"), duration:$("duration"), charset:$("charset"), brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), sourceColor:$("source-color"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"), foreground:$("foreground"), background:$("background"), effect:$("effect"), effectPower:$("effect-power"), resolveAudio:$("resolve-audio"), audioLevel:$("audio-level"), prompt:$("prompt") };
+  const state = { media:null, fileURL:null, sourceKind:null, playing:false, started:performance.now(), imageReady:false, recording:false, analyserW:0, analyserH:0 };
+  const outputNames={size:"cell-size-out",duration:"duration-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",audioLevel:"audio-level-out"};
   const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:ui[key].value);
   document.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",updateReadouts)); updateReadouts();
+  const resolveAudio = new Audio("assets/ascii-resolve-click-loop.mp3");
+  resolveAudio.preload="auto"; resolveAudio.loop=true;
+  const isAnimated=()=>ui.mode.value!=="direct";
+  function stopResolveAudio(){ resolveAudio.pause(); resolveAudio.currentTime=0; }
+  function syncResolveAudio(){
+    if(!state.playing || !isAnimated() || !ui.resolveAudio.checked){ stopResolveAudio(); return; }
+    resolveAudio.volume=Number(ui.audioLevel.value)/100;
+    if(Number.isFinite(resolveAudio.duration) && resolveAudio.duration>0) resolveAudio.playbackRate=Math.max(.3,Math.min(3,resolveAudio.duration/Number(ui.duration.value)));
+    resolveAudio.currentTime=0; resolveAudio.play().catch(()=>{ transport.textContent="TAP PLAY TO ENABLE SOUND"; });
+  }
 
   function seed(x,y){ let n=(x*374761393+y*668265263)>>>0; n=(n^(n>>>13))*1274126177; return ((n^(n>>>16))>>>0)/4294967296; }
   function mediaDimensions(){ if(!state.media) return [960,540]; return state.sourceKind==="video"?[state.media.videoWidth||960,state.media.videoHeight||540]:[state.media.naturalWidth||960,state.media.naturalHeight||540]; }
@@ -65,9 +75,12 @@
   }
   function load(file){
     if(!file) return; if(state.fileURL) URL.revokeObjectURL(state.fileURL); state.fileURL=URL.createObjectURL(file); state.imageReady=false;
+    // Every new source begins as an inspectable still, regardless of any form
+    // values the browser restored from a previous session.
+    ui.mode.value="direct"; ui.effect.value="none"; state.playing=false; $("play").textContent="PLAY"; stopResolveAudio();
     const isVideo=file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv)$/i.test(file.name); const el=isVideo?document.createElement("video"):new Image();
     state.media=el; state.sourceKind=isVideo?"video":"image"; el.src=state.fileURL; status.textContent=`LOADING // ${file.name.toUpperCase()}`;
-    const ready=()=>{ state.imageReady=true; empty.hidden=true; state.started=performance.now(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="LIVE PREVIEW"; if(isVideo){el.loop=true;el.muted=true;el.play().catch(()=>{});} };
+    const ready=()=>{ state.imageReady=true; empty.hidden=true; state.playing=false; $("play").textContent="PLAY"; state.started=performance.now(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="STATIC PREVIEW — PICK A STYLE TO ANIMATE"; if(isVideo){el.loop=true;el.muted=true;el.pause();el.currentTime=0;} };
     if(isVideo){ el.addEventListener("loadeddata",ready,{once:true}); el.addEventListener("error",()=>status.textContent="UNSUPPORTED VIDEO CODEC",{once:true}); } else { el.onload=ready; el.onerror=()=>status.textContent="UNSUPPORTED IMAGE"; }
   }
   function applyPrompt(){ const p=ui.prompt.value.toLowerCase(); const set=(key,val)=>{ ui[key].value=val; };
@@ -88,13 +101,13 @@
       terminal:()=>{set("mode","terminal");set("scanlines","45");set("glitch","22");},
       rain:()=>{set("mode","terminal");set("foreground","#ef4035");set("effect","rain");set("effectPower","65");set("glitch","35");set("scanlines","45");}
     };
-    presets[name]?.(); state.started=performance.now(); updateReadouts(); transport.textContent=`${name.toUpperCase()} PRESET`;
+    presets[name]?.(); state.started=performance.now(); state.playing=name!=="direct"; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"){ if(state.playing)state.media.play().catch(()=>{}); else state.media.pause(); } syncResolveAudio(); updateReadouts(); transport.textContent=name==="direct"?"STATIC PREVIEW":"ANIMATION PRESET";
   }
-  function restart(){ state.started=performance.now(); if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;state.media.play().catch(()=>{});} transport.textContent="RESTARTED"; }
+  function restart(){ state.started=performance.now(); if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent="RESTARTED"; }
   function snapshot(){ const a=document.createElement("a");a.download="ascii-motion-frame.png";a.href=out.toDataURL("image/png");a.click(); }
   async function record(){ if(!state.imageReady||state.recording)return; if(!window.MediaRecorder){transport.textContent="MEDIARECORDER NOT AVAILABLE";return;} state.recording=true; $("record").classList.add("recording"); $("record").textContent="● RECORDING…"; restart();
-    const stream=out.captureStream(Number(ui.fps.value)); const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"; const rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8_000_000}); const chunks=[];
-    rec.ondataavailable=e=>e.data.size&&chunks.push(e.data); rec.onstop=()=>{ const blob=new Blob(chunks,{type});const a=document.createElement("a");a.download="ascii-motion-loop.webm";a.href=URL.createObjectURL(blob);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);state.recording=false;$("record").classList.remove("recording");$("record").textContent="● EXPORT LOOP (WEBM)";transport.textContent="WEBM EXPORTED"; };
+    const stream=out.captureStream(Number(ui.fps.value)); const audioStream=ui.resolveAudio.checked && resolveAudio.captureStream ? resolveAudio.captureStream() : null; audioStream?.getAudioTracks().forEach(track=>stream.addTrack(track)); const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"; const rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8_000_000}); const chunks=[];
+    rec.ondataavailable=e=>e.data.size&&chunks.push(e.data); rec.onstop=()=>{ const blob=new Blob(chunks,{type});const a=document.createElement("a");a.download="ascii-motion-loop.webm";a.href=URL.createObjectURL(blob);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);state.recording=false;$("record").classList.remove("recording");$("record").textContent="● EXPORT LOOP (WEBM + SOUND)";transport.textContent="WEBM EXPORTED"; };
     rec.start(); setTimeout(()=>rec.stop(),Number(ui.duration.value)*1000);
   }
   fileInput.onchange=e=>{ load(e.target.files[0]); e.target.value=""; };
@@ -102,7 +115,9 @@
   $("apply-prompt").onclick=applyPrompt; $("restart").onclick=restart; $("snapshot").onclick=snapshot; $("record").onclick=record;
   document.querySelectorAll("[data-preset]").forEach(button=>button.onclick=()=>applyPreset(button.dataset.preset));
   document.querySelectorAll("[data-prompt]").forEach(button=>button.onclick=()=>{ui.prompt.value=button.dataset.prompt;applyPrompt();});
-  $("play").onclick=()=>{state.playing=!state.playing;$("play").textContent=state.playing?"PAUSE":"PLAY";transport.textContent=state.playing?"PLAYING":"PAUSED"; if(state.sourceKind==="video")state.playing?state.media.play():state.media.pause();};
+  $("play").onclick=()=>{state.playing=!state.playing;$("play").textContent=state.playing?"PAUSE":"PLAY";transport.textContent=state.playing?"PLAYING":"PAUSED"; if(state.sourceKind==="video")state.playing?state.media.play():state.media.pause(); syncResolveAudio();};
+  ui.resolveAudio.onchange=()=>{ if(ui.resolveAudio.checked)syncResolveAudio(); else stopResolveAudio(); };
+  ui.duration.onchange=()=>{ if(state.playing)syncResolveAudio(); };
   $("toggle-ui").onclick=()=>{document.body.classList.toggle("ui-hidden");$("toggle-ui").textContent=document.body.classList.contains("ui-hidden")?"SHOW UI":"HIDE UI";};
   render();
 })();

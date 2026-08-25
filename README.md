@@ -11,8 +11,19 @@ upload, live ASCII conversion, character-build / terminal / pixel-sort / scanlin
 prompt-driven styling controls; PNG frame export; and WebM
 loop export.
 
-On mobile, use **Quick Start** first. The typing field is optional and merely
+The default after upload is **Direct ASCII — Still**, so the source is visible
+before anything animates. Use a Quick Start animation preset or **Play** to
+start motion. On mobile, use **Quick Start** first. The typing field is optional and merely
 maps a few obvious phrases to the same visible controls—it is not an AI model.
+
+## Resolve sound
+
+Animated presets can play a 3.5-second, loop-safe click/glitch cue precisely
+from the beginning of each resolve cycle. It is enabled by default, can be
+muted or level-adjusted in Output, and is included in Chrome/desktop WebM
+exports when the browser exposes audio capture. The cue was derived from
+Johnmode's CC0 Freesound sound 826671; source page:
+https://freesound.org/people/Johnmode/sounds/826671/
 
 ## Run locally
 

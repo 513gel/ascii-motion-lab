@@ -61,8 +61,8 @@
           <div class="panel-title">CONVERSION</div>
           <label>MODE
             <select id="mode">
-              <option value="direct">DIRECT ASCII</option>
-              <option value="decode" selected>CHARACTER BUILD / DECODE</option>
+              <option value="direct" selected>DIRECT ASCII — STILL</option>
+              <option value="decode">CHARACTER BUILD / DECODE</option>
               <option value="pixel-sort">PIXEL-SORT REVEAL</option>
               <option value="scanline">SCANLINE DEVELOP</option>
               <option value="edge">EDGE-FIRST</option>
@@ -134,8 +134,12 @@
             <button id="restart" class="ghost">RESTART</button>
             <button id="snapshot" class="ghost">PNG FRAME</button>
           </div>
-          <button id="record" class="record">● EXPORT LOOP (WEBM)</button>
-          <p id="export-note" class="hint">Native browser export is WebM. MP4 export is planned through an optional local FFmpeg companion so the browser stays fast.</p>
+          <div class="audio-row">
+            <label><input id="resolve-audio" type="checkbox" checked /> SYNC CLICK SOUND</label>
+            <label>LEVEL <output id="audio-level-out">65</output><input id="audio-level" type="range" min="0" max="100" value="65" /></label>
+          </div>
+          <button id="record" class="record">● EXPORT LOOP (WEBM + SOUND)</button>
+          <p id="export-note" class="hint">The resolve click is synced to each animated preset. Native browser export is WebM; MP4 export is planned through an optional local FFmpeg companion.</p>
         </section>
       </aside>
     </main>

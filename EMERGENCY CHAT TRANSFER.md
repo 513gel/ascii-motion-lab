@@ -37,6 +37,11 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
 - The transparent mobile file target is a child of `.stage-shell`, which must
   remain `position: relative`; otherwise it covers the entire page and steals
   control-panel taps. Verified that a Direct preset tap does not open it.
+- Every newly selected source is explicitly reset to `Direct ASCII — Still`
+  and paused, avoiding Chrome form-state restoration of a prior animation mode.
+- `assets/ascii-resolve-click-loop.mp3` is a 3.500-second loop-safe cue made
+  from Johnmode Freesound 826671 (CC0). Animated presets restart and loop it in
+  sync with the resolve cycle; Output has a mute toggle and level control.
 - Git is configured **locally for this repository only** as `513gel` using
   `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
 - Not yet visually tested in Chrome. MP4 export and AI-video handoff are future
