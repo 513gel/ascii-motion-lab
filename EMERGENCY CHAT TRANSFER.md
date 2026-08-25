@@ -28,6 +28,9 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
 - Exports PNG stills and canvas-recorded WebM loops.
 - Published from `main` with GitHub Pages branch publishing; live build returned
   HTTP 200. The project is public so the user can test it from a phone at work.
+- Mobile upload uses a transparent native file-picker target over the entire
+  preview. The empty-state overlay must retain `.empty-state[hidden]` so it
+  does not obscure a successfully loaded source.
 - Git is configured **locally for this repository only** as `513gel` using
   `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
 - Not yet visually tested in Chrome. MP4 export and AI-video handoff are future
