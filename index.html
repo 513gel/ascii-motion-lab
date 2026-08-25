@@ -22,12 +22,12 @@
             <div class="crosshair">+</div>
             <strong>DROP A SOURCE</strong>
             <span>IMAGE · GIF · MP4 · WEBM · MOV*</span>
-            <button id="browse" class="primary">CHOOSE FILE</button>
+            <span class="primary browse-label">CHOOSE FILE</span>
             <small>* Browser codec support decides whether a MOV can play. Normal MP4/WebM are safe.</small>
           </div>
           <div class="stage-readout"><span id="dimension-readout">960 × 540</span><span id="fps-readout">30 FPS</span></div>
         </div>
-        <input id="file-input" type="file" accept="image/*,video/*,.gif,.webp,.apng,.mov,.mkv" hidden />
+        <input id="file-input" class="file-input" type="file" accept="image/*,video/*" aria-label="Choose an image, GIF, or video" />
       </section>
 
       <aside id="controls" class="controls">

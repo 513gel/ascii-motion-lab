@@ -12,9 +12,10 @@ button:hover { border-color:var(--ink); background:#1a1a1a; } button:active { tr
 main { display:grid; grid-template-columns:minmax(0,1fr) 350px; min-height:calc(100vh - 70px); }
 .stage-shell { min-width:0; padding:18px; display:grid; place-items:center; }
 .drop-zone { width:100%; height:100%; min-height:530px; position:relative; overflow:hidden; border:1px solid var(--line); background:#000; display:grid; place-items:center; }
+.file-input { position:absolute; z-index:5; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
 .drop-zone.dragging { border:1px dashed var(--ink); box-shadow:inset 0 0 0 1px var(--ink); } canvas { max-width:100%; max-height:calc(100vh - 120px); width:auto; height:auto; image-rendering:pixelated; }
 .empty-state { position:absolute; inset:0; display:flex; flex-direction:column; gap:12px; align-items:center; justify-content:center; text-align:center; background:repeating-linear-gradient(0deg,#050505,#050505 3px,#080808 3px,#080808 4px); }
-.empty-state strong { font-size:17px; letter-spacing:.18em; }.empty-state span,.empty-state small { color:var(--muted); }.empty-state small { max-width:370px; line-height:1.5; }.crosshair { font-size:38px; color:#777; font-weight:100; }
+.empty-state strong { font-size:17px; letter-spacing:.18em; }.empty-state span,.empty-state small { color:var(--muted); }.empty-state small { max-width:370px; line-height:1.5; }.crosshair { font-size:38px; color:#777; font-weight:100; }.browse-label { display:inline-block; padding:10px 12px; font-weight:700; letter-spacing:.06em; }
 .stage-readout { position:absolute; bottom:9px; left:10px; right:10px; display:flex; justify-content:space-between; font-size:10px; color:#aaa; pointer-events:none; mix-blend-mode:difference; }
 .controls { border-left:1px solid var(--line); background:#090909; padding:10px; overflow-y:auto; max-height:calc(100vh - 70px); }
 .panel { border:1px solid var(--line); background:linear-gradient(130deg,#0e0e0e,#090909); margin-bottom:10px; padding:11px; }.panel-title { font-size:10px; font-weight:900; margin-bottom:10px; color:#ddd; }.panel-title span { float:right; color:#666; font-size:8px; }

@@ -25,6 +25,8 @@ Then open `http://localhost:8080` in Chrome.
 - Still images: browser-supported formats, including PNG/JPG/WebP and usually
   GIF/APNG.
 - Animated GIF: live animation is sampled directly by the browser.
+- Mobile upload uses the native picker over the full preview area; tap anywhere
+  in the empty preview to choose a photo or video.
 - Video: MP4/WebM are the dependable choices. MOV/MKV support depends on the
   codecs inside the file and the installed browser codecs.
 - Export: native browser `MediaRecorder` produces a high-quality WebM loop.
