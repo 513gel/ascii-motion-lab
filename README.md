@@ -11,6 +11,9 @@ upload, live ASCII conversion, character-build / terminal / pixel-sort / scanlin
 prompt-driven styling controls; PNG frame export; and WebM
 loop export.
 
+On mobile, use **Quick Start** first. The typing field is optional and merely
+maps a few obvious phrases to the same visible controls—it is not an AI model.
+
 ## Run locally
 
 ```powershell

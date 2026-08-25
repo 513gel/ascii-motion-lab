@@ -31,11 +31,30 @@
       </section>
 
       <aside id="controls" class="controls">
+        <section class="panel quick-panel">
+          <div class="panel-title">QUICK START <span>NO TYPING REQUIRED</span></div>
+          <p class="quick-copy">Pick one. Upload something. It just works. Tweak the advanced shit only if you want to.</p>
+          <div class="preset-grid">
+            <button data-preset="direct"><strong>DIRECT</strong><small>instant ASCII</small></button>
+            <button data-preset="build"><strong>BUILD IN</strong><small>characters resolve</small></button>
+            <button data-preset="sort"><strong>PIXEL SORT</strong><small>streaked reveal</small></button>
+            <button data-preset="scan"><strong>SCANLINE</strong><small>develop downward</small></button>
+            <button data-preset="terminal"><strong>TERMINAL</strong><small>data decode</small></button>
+            <button data-preset="rain"><strong>RED RAIN</strong><small>terminal weather</small></button>
+          </div>
+        </section>
+
         <section class="panel prompt-panel">
-          <div class="panel-title">PROMPT / ART DIRECTION <span>OPTIONAL</span></div>
-          <textarea id="prompt" rows="3" placeholder="e.g. white terminal decode, edge-first, slow scanline, CRT, low FPS"></textarea>
-          <button id="apply-prompt" class="primary full">APPLY PROMPT</button>
-          <p class="hint">This controls the procedural look. It does not invent a different AI video from the upload.</p>
+          <div class="panel-title">TYPE A VIBE <span>OPTIONAL SHORTCUT</span></div>
+          <textarea id="prompt" rows="2" placeholder="Try one of the examples below — no AI is hiding behind this box."></textarea>
+          <div class="prompt-examples">
+            <button data-prompt="white terminal decode, slow, CRT">TERMINAL CRT</button>
+            <button data-prompt="edge-first, clean, white">CLEAN EDGES</button>
+            <button data-prompt="pixel sort, blue, choppy">PSX BLUE SORT</button>
+            <button data-prompt="red rain, glitch, slow">CORRUPTED RED</button>
+          </div>
+          <button id="apply-prompt" class="ghost full">USE TYPED VIBE</button>
+          <p class="hint">This is a local settings shortcut, not generative AI. The buttons above are the normal way to use the app.</p>
         </section>
 
         <section class="panel">

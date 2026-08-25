@@ -77,6 +77,19 @@
     if(/slow/.test(p))set("duration","7"); if(/fast|rapid/.test(p))set("duration","1.5"); if(/low fps|choppy|psx/.test(p))set("fps","12"); if(/crt|scanline/.test(p))set("scanlines","55"); if(/glitch|corrupt/.test(p))set("glitch","50"); if(/clean|minimal/.test(p)){set("glitch","0");set("scanlines","0");}
     updateReadouts(); transport.textContent="PROMPT APPLIED";
   }
+  function applyPreset(name){
+    const set=(key,val)=>{ui[key].value=val;};
+    set("foreground","#f5f5f5"); set("background","#050505"); set("effect","none"); set("glitch","8"); set("scanlines","18"); set("fps","30");
+    const presets={
+      direct:()=>set("mode","direct"),
+      build:()=>set("mode","decode"),
+      sort:()=>{set("mode","pixel-sort");set("direction","random");set("glitch","14");},
+      scan:()=>{set("mode","scanline");set("scanlines","38");},
+      terminal:()=>{set("mode","terminal");set("scanlines","45");set("glitch","22");},
+      rain:()=>{set("mode","terminal");set("foreground","#ef4035");set("effect","rain");set("effectPower","65");set("glitch","35");set("scanlines","45");}
+    };
+    presets[name]?.(); state.started=performance.now(); updateReadouts(); transport.textContent=`${name.toUpperCase()} PRESET`;
+  }
   function restart(){ state.started=performance.now(); if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;state.media.play().catch(()=>{});} transport.textContent="RESTARTED"; }
   function snapshot(){ const a=document.createElement("a");a.download="ascii-motion-frame.png";a.href=out.toDataURL("image/png");a.click(); }
   async function record(){ if(!state.imageReady||state.recording)return; if(!window.MediaRecorder){transport.textContent="MEDIARECORDER NOT AVAILABLE";return;} state.recording=true; $("record").classList.add("recording"); $("record").textContent="● RECORDING…"; restart();
@@ -87,6 +100,8 @@
   fileInput.onchange=e=>{ load(e.target.files[0]); e.target.value=""; };
   ["dragenter","dragover"].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.add("dragging");})); ["dragleave","drop"].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.remove("dragging");})); drop.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
   $("apply-prompt").onclick=applyPrompt; $("restart").onclick=restart; $("snapshot").onclick=snapshot; $("record").onclick=record;
+  document.querySelectorAll("[data-preset]").forEach(button=>button.onclick=()=>applyPreset(button.dataset.preset));
+  document.querySelectorAll("[data-prompt]").forEach(button=>button.onclick=()=>{ui.prompt.value=button.dataset.prompt;applyPrompt();});
   $("play").onclick=()=>{state.playing=!state.playing;$("play").textContent=state.playing?"PAUSE":"PLAY";transport.textContent=state.playing?"PLAYING":"PAUSED"; if(state.sourceKind==="video")state.playing?state.media.play():state.media.pause();};
   $("toggle-ui").onclick=()=>{document.body.classList.toggle("ui-hidden");$("toggle-ui").textContent=document.body.classList.contains("ui-hidden")?"SHOW UI":"HIDE UI";};
   render();
