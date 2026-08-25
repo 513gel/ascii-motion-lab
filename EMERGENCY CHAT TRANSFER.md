@@ -13,6 +13,10 @@ with character-by-character reveal and pixel-sort-like transitions.
 
 `C:\Users\xxxye\Documents\Codex\2026-08-02\files-mentioned-by-the-user-codex\ascii-motion-lab`
 
+Remote: `https://github.com/513gel/ascii-motion-lab`
+
+Live app: `https://513gel.github.io/ascii-motion-lab/`
+
 ## Current state
 
 - `001` implemented as dependency-free `index.html`, `styles.css`, and `app.js`.
@@ -22,6 +26,10 @@ with character-by-character reveal and pixel-sort-like transitions.
   terminal-rain, particle, waveform, and ASCII-orb overlays; it is not a
   generative AI model.
 - Exports PNG stills and canvas-recorded WebM loops.
+- Published from `main` with GitHub Pages branch publishing; live build returned
+  HTTP 200. The project is public so the user can test it from a phone at work.
+- Git is configured **locally for this repository only** as `513gel` using
+  `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
 - Not yet visually tested in Chrome. MP4 export and AI-video handoff are future
   additions; FFmpeg should remain optional and local.
 
