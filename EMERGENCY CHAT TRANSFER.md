@@ -34,6 +34,9 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
 - Mobile UI has been verified at 390 × 844. The mobile-first path is the six
   Quick Start presets (Direct, Build In, Pixel Sort, Scanline, Terminal, Red
   Rain); the text field is an optional settings shortcut only.
+- The transparent mobile file target is a child of `.stage-shell`, which must
+  remain `position: relative`; otherwise it covers the entire page and steals
+  control-panel taps. Verified that a Direct preset tap does not open it.
 - Git is configured **locally for this repository only** as `513gel` using
   `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
 - Not yet visually tested in Chrome. MP4 export and AI-video handoff are future
