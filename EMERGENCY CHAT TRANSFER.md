@@ -116,6 +116,10 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   and `npm run build` passed locally after `npm ci`. Commit `bd4295b` was pushed
   and production verification returned HTTP 200 with GLYPHSHIFT controls at
   `https://13thoni.com/GLYPHSHIFT/`; the home terminal also contains the link.
+  The next GLYPHSHIFT update is source commit `6405141` and 13thoni commit
+  `5f0bbce`; both were pushed on 2026-08-26. It passed local static checks and
+  the 13thoni production build before push, but the CDN had not served the new
+  Iterative Draft markup during the immediate post-push cache check.
 - Animated presets are now build-and-hold: once the duration completes, the
   renderer freezes on the fully resolved final frame, stops resolve audio,
   pauses any video source, and changes Play to Replay. Restart resets the
