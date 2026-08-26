@@ -77,13 +77,11 @@
 
         <section class="panel" data-page="look">
           <div class="panel-title">CONVERSION</div>
-          <div class="two-col">
-            <label>GLYPH SIZE <output id="cell-size-out">9</output>
-              <input id="cell-size" type="range" min="5" max="180" value="9" />
-            </label>
-            <label><input id="fine-glyph-size" type="checkbox" /> FINE SIZE <span class="field-note">0.1 STEPS</span></label>
-          </div>
-          <p class="hint compact-hint">Animated styles build once, then hold the completed frame.</p>
+          <label>GLYPH SIZE
+            <input id="cell-size-manual" class="inline-number" type="number" min="5" max="180" step="0.1" value="9" inputmode="decimal" aria-label="Exact glyph size" />
+            <input id="cell-size" type="range" min="5" max="180" step="0.1" value="9" />
+          </label>
+          <p class="hint compact-hint">Type an exact size (including decimals); the slider is for rough adjustment. Animated styles build once, then hold the completed frame.</p>
           <div class="two-col">
             <label>BRIGHTNESS <output id="brightness-out">0</output>
               <input id="brightness" type="range" min="-100" max="100" value="0" />

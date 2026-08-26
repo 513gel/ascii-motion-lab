@@ -3,7 +3,7 @@
   const out = $("output"), ctx = out.getContext("2d"), sample = document.createElement("canvas"), sctx = sample.getContext("2d", { willReadFrequently:true });
   const fileInput=$("file-input"), textFileInput=$("text-file-input"), drop=$("drop-zone"), canvasWrap=$("canvas-wrap"), liveText=$("live-text"), empty=$("empty-state"), status=$("source-status"), transport=$("transport-status");
   const ui = {
-    mode:$("mode"), size:$("cell-size"), fineGlyphSize:$("fine-glyph-size"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textLayout:$("text-layout"), textScale:$("text-scale"), textBlend:$("text-blend"), noTextRepeat:$("no-text-repeat"), lockSentence:$("lock-sentence"), lockedSentence:$("locked-sentence"), boldWords:$("bold-words"), findText:$("find-text"), replaceText:$("replace-text"),
+    mode:$("mode"), size:$("cell-size"), sizeManual:$("cell-size-manual"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textLayout:$("text-layout"), textScale:$("text-scale"), textBlend:$("text-blend"), noTextRepeat:$("no-text-repeat"), lockSentence:$("lock-sentence"), lockedSentence:$("locked-sentence"), boldWords:$("bold-words"), findText:$("find-text"), replaceText:$("replace-text"),
     brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"),
     colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"), hardBlackWhite:$("hard-black-white"),
     effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), tickVoice:$("tick-voice"), previewEngine:$("preview-engine"), prompt:$("prompt"),
@@ -11,16 +11,19 @@
   };
   // Do not let browser form restoration boot the tool into someone's previous
   // glitch carnival. New sessions start as a clean, direct baseline.
-  ui.glitch.value="0"; ui.scanlines.value="0"; ui.effect.value="none"; ui.effectPower.value="0"; ui.contrast.value="100"; ui.direction.value="left"; ui.noTextRepeat.checked=false; ui.fineGlyphSize.checked=false; ui.hardBlackWhite.checked=false;
+  ui.glitch.value="0"; ui.scanlines.value="0"; ui.effect.value="none"; ui.effectPower.value="0"; ui.contrast.value="100"; ui.direction.value="left"; ui.noTextRepeat.checked=false; ui.hardBlackWhite.checked=false;
   const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1, lastVisibleGlyphs:0, generationTicks:0, firstTick:true, finalTick:false, textMode:true, manualText:"", viewport:{x:0,y:0,zoom:1} };
-  const outputNames={size:"cell-size-out",duration:"duration-out",textScale:"text-scale-out",textBlend:"text-blend-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",outputScale:"output-scale-out",audioLevel:"audio-level-out",safeArea:"safe-area-out"};
+  const outputNames={duration:"duration-out",textScale:"text-scale-out",textBlend:"text-blend-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",outputScale:"output-scale-out",audioLevel:"audio-level-out",safeArea:"safe-area-out"};
   const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:key==="outputScale"?`${ui[key].value}%`:ui[key].value);
-  function syncGlyphPrecision(announce=false){
-    ui.size.step=ui.fineGlyphSize.checked?"0.1":"1";
-    if(!ui.fineGlyphSize.checked) ui.size.value=String(Math.round(Number(ui.size.value)));
+  function setGlyphSize(value,announce=false){
+    const parsed=Number(value), current=Number(ui.size.value)||9;
+    const next=Number.isFinite(parsed)?Math.max(5,Math.min(180,parsed)):current;
+    const formatted=String(Math.round(next*10)/10);
+    ui.size.value=formatted; ui.sizeManual.value=formatted;
     updateReadouts(); state.lastRender=0;
-    if(announce) transport.textContent=ui.fineGlyphSize.checked?"FINE GLYPH SIZE — 0.1 STEPS":"GLYPH SIZE — WHOLE STEPS";
+    if(announce) transport.textContent=`GLYPH SIZE — ${formatted}`;
   }
+  setGlyphSize(ui.size.value);
   document.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",updateReadouts)); updateReadouts();
   const history={past:[],future:[],current:null,restoring:false}; let viewportCommitTimer=0;
   function applyViewport(){ const {x,y,zoom}=state.viewport; canvasWrap.style.transform=`translate(${x}px, ${y}px) scale(${zoom})`; }
@@ -36,7 +39,7 @@
   }
   function restoreHistory(snapshot,label){
     history.restoring=true; Object.entries(snapshot.controls).forEach(([id,value])=>{ const control=$(id); if(control) control.type==="checkbox"?control.checked=value:control.value=value; });
-    state.viewport={...snapshot.viewport}; applyViewport(); $("text-count").textContent=`${ui.customText.value.length.toLocaleString()} CHARACTERS`; syncGlyphPrecision(); syncHardBlackWhite(); state.lastRender=0; state.playing=false; state.completed=false; state.pausedElapsed=0; stopResolveAudio(); history.restoring=false; transport.textContent=`${label} APPLIED`;
+    state.viewport={...snapshot.viewport}; applyViewport(); $("text-count").textContent=`${ui.customText.value.length.toLocaleString()} CHARACTERS`; setGlyphSize(ui.size.value); syncHardBlackWhite(); state.lastRender=0; state.playing=false; state.completed=false; state.pausedElapsed=0; stopResolveAudio(); history.restoring=false; transport.textContent=`${label} APPLIED`;
   }
   function undo(){ if(!history.past.length) return; history.future.push(history.current); history.current=history.past.pop(); restoreHistory(history.current,"UNDO"); updateHistoryButtons(); }
   function redo(){ if(!history.future.length) return; history.past.push(history.current); history.current=history.future.pop(); restoreHistory(history.current,"REDO"); updateHistoryButtons(); }
@@ -507,8 +510,16 @@
   ui.palettePreset.onchange=()=>applyPalettePreset(ui.palettePreset.value);
   [ui.colorMode,ui.paletteSize,ui.backgroundStyle,ui.foreground,ui.palette2,ui.palette3,ui.palette4,ui.palette5,ui.background,ui.background2].forEach(control=>control.addEventListener("input",markPaletteCustom));
   ui.hardBlackWhite.onchange=()=>{ syncHardBlackWhite(true); updateReadouts(); commitHistory(); };
-  [ui.size,ui.aspectRatio,ui.outputResolution,ui.customResolution,ui.outputScale].forEach(control=>control.addEventListener("input",()=>{ state.lastRender=0; }));
-  ui.fineGlyphSize.onchange=()=>{ syncGlyphPrecision(true); commitHistory(); };
+  ui.size.oninput=()=>setGlyphSize(ui.size.value);
+  ui.size.onchange=()=>commitHistory();
+  ui.sizeManual.oninput=()=>{
+    const typed=Number(ui.sizeManual.value);
+    // Do not rewrite the field while someone is typing "41.2" — partial values
+    // such as "4" or "41." are legitimate in-progress edits.
+    if(Number.isFinite(typed) && typed>=5 && typed<=180){ ui.size.value=String(Math.round(typed*10)/10); updateReadouts(); state.lastRender=0; }
+  };
+  ui.sizeManual.onchange=()=>{ setGlyphSize(ui.sizeManual.value,true); commitHistory(); };
+  [ui.aspectRatio,ui.outputResolution,ui.customResolution,ui.outputScale].forEach(control=>control.addEventListener("input",()=>{ state.lastRender=0; }));
   ui.mode.onchange=()=>{ state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; if(ui.mode.value==="text-typewriter"&&ui.customText.value.trim()){ui.glyphSource.value="text";ui.textLayout.value="flow";ui.previewEngine.value="canvas";leaveTextCanvas();} if(ui.mode.value==="direct"){ state.playing=false; stopResolveAudio(); $("play").textContent="PLAY"; transport.textContent="STATIC PREVIEW"; } else transport.textContent=ui.mode.value==="text-typewriter"?"TEXT TYPEWRITER READY — PRESS PLAY":"STYLE SET — PRESS PLAY"; };
   $("play").onclick=()=>{
     if(!isAnimated()){ state.playing=false; state.completed=false; state.pausedElapsed=0; $("play").textContent="PLAY"; stopResolveAudio(); transport.textContent="STATIC PREVIEW — CHOOSE A BUILD STYLE TO ANIMATE"; return; }

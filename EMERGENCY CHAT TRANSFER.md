@@ -54,9 +54,11 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   A prior `fit()` function enlarged small grids back to its 220 × 260 maximum,
   defeating the size slider. It now only clamps oversized grids down. `Text
   Repeat` only repeats pasted Text Weave characters; it does not affect size.
-  The optional **Fine Size** toggle changes Glyph Size to 0.1 steps (for
-  example 41.0 → 41.1); normal whole-number sizing remains the default. Undo
-  and redo restore both the size and its precision mode.
+  Glyph Size uses a normal editable numeric field plus a slider: type an exact
+  value from **5–180** in 0.1 increments (for example `41.2`) and use the
+  slider only for rough adjustment. The field deliberately does not rewrite
+  partial input while typing, so entering a decimal cannot fight the user.
+  Undo and redo restore the exact selected glyph size.
 - New **Glyph Collapse** build style starts at the maximum 180 glyph size and
   smoothly resolves down to the current Glyph Size setting. It samples a new
   grid every real render frame and always shows the entire coarse image, so it
