@@ -124,6 +124,10 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   Unicode block glyphs, each selected cell can blank as a delete operation,
   then tries scratch symbols before settling on the real sampled glyph. A
   blinking DOM/canvas caret marks an active random editing cell until lock.
+- The Japanese library uses half-width Katakana (`ｱｲｳ...`) rather than full-width
+  forms so each glyph occupies one literal terminal/`<pre>` cell. TRUE TEXT
+  also has MS Gothic and Yu Gothic UI Mono fallbacks. Full-width custom CJK text
+  still cannot be treated as single-width ASCII without changing its characters.
 - Text Foundation now supports multiple local documents in one import, left,
   right, vertical, and spiral traversal, a literal locked sentence, text/ramp
   blend, weighted bold words, local find/replace, and a browser-local reusable

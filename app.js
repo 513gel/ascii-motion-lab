@@ -147,7 +147,9 @@
     english:" ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
     binary:" 01/\\|[]{}<>+-",
     blocks:" ░▒▓█",
-    katakana:" アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン",
+    // Half-width Katakana fits one terminal cell; full-width Katakana breaks a
+    // literal <pre> grid by consuming two visual columns.
+    katakana:" ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝ",
     symbols:" ·:+*#@%&$?<>[]{}()/\\"
   };
   const palettePresets={
