@@ -39,6 +39,10 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   control-panel taps. Verified that a Direct preset tap does not open it.
 - Every newly selected source is explicitly reset to `Direct ASCII — Still`
   and paused, avoiding Chrome form-state restoration of a prior animation mode.
+- Each upload now also resets `Output Scale` to **100%**. At 100%, the output
+  canvas keeps the source's native pixel width and height; the new Output Scale
+  slider (25–200%) is the only deliberate output-size control. Glyph Size
+  affects ASCII analysis density, not output dimensions.
 - Animated presets now default to a generated **Algorithmic Resolve** Web Audio
   layer: Memory Leak is the quiet fixed-pitch low bed, Cache Miss creates sparse
   comparison packets mid-build, and Heap Clack supplies major lock-in beats.
@@ -82,10 +86,10 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   20 entries, and validates that every tile references a real recipe. The
   connected browser still reported no controllable tabs after the change, so
   post-edit audio audition must be done manually from the live Sound Lab. The
-  Algorithmic Resolve integration passes static JavaScript/UI checks but still
-  needs an audible desktop test and WebM-export test from the user. MP4 export
-  and AI-video handoff are future additions; FFmpeg should remain optional and
-  local.
+  Algorithmic Resolve integration and native-scale output behavior pass static
+  JavaScript/UI checks but still need a visual/audible desktop test and a
+  WebM-export test from the user. MP4 export and AI-video handoff are future
+  additions; FFmpeg should remain optional and local.
 
 ## Run
 

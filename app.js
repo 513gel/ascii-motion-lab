@@ -6,11 +6,11 @@
     mode:$("mode"), size:$("cell-size"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textScale:$("text-scale"),
     brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"),
     colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"),
-    effect:$("effect"), effectPower:$("effect-power"), resolveAudio:$("resolve-audio"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), prompt:$("prompt")
+    effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), resolveAudio:$("resolve-audio"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), prompt:$("prompt")
   };
   const state = { media:null, fileURL:null, sourceKind:null, playing:false, started:performance.now(), imageReady:false, recording:false, analyserW:0, analyserH:0 };
-  const outputNames={size:"cell-size-out",duration:"duration-out",textScale:"text-scale-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",audioLevel:"audio-level-out"};
-  const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:ui[key].value);
+  const outputNames={size:"cell-size-out",duration:"duration-out",textScale:"text-scale-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",outputScale:"output-scale-out",audioLevel:"audio-level-out"};
+  const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:key==="outputScale"?`${ui[key].value}%`:ui[key].value);
   document.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",updateReadouts)); updateReadouts();
   const resolveAudio = new Audio("assets/ascii-resolve-click-loop.mp3");
   resolveAudio.preload="auto"; resolveAudio.loop=true;
@@ -102,8 +102,10 @@
   }
   function sourceFrame(){
     if(!state.media) return null;
-    const [mw,mh]=mediaDimensions(), cell=Number(ui.size.value), maxW=150, maxH=120;
-    const [aw,ah]=fit(mw,mh,maxW,maxH); state.analyserW=aw; state.analyserH=ah; sample.width=aw; sample.height=ah;
+    const [mw,mh]=mediaDimensions(), requestedCell=Number(ui.size.value), maxW=220, maxH=260;
+    // The grid is a processing preview; the output canvas itself stays at the
+    // source image's native dimensions (or the user's explicit Output Scale).
+    const [aw,ah]=fit(Math.ceil(mw/requestedCell),Math.ceil(mh/requestedCell),maxW,maxH); state.analyserW=aw; state.analyserH=ah; sample.width=aw; sample.height=ah;
     sctx.fillStyle="#000"; sctx.fillRect(0,0,aw,ah); sctx.drawImage(state.media,0,0,mw,mh,0,0,aw,ah);
     try { return sctx.getImageData(0,0,aw,ah); } catch { return null; }
   }
@@ -126,10 +128,10 @@
     requestAnimationFrame(render);
     if(!state.imageReady) return;
     const frame=sourceFrame(); if(!frame) return;
-    const cell=Number(ui.size.value), cellH=Math.round(cell*1.68), w=state.analyserW*cell, h=state.analyserH*cellH;
+    const [mw,mh]=mediaDimensions(), outputScale=Number(ui.outputScale.value)/100, w=Math.max(1,Math.round(mw*outputScale)), h=Math.max(1,Math.round(mh*outputScale)), cell=w/state.analyserW, cellH=h/state.analyserH;
     if(out.width!==w||out.height!==h){ out.width=w;out.height=h; $("dimension-readout").textContent=`${w} × ${h}`; }
     $("fps-readout").textContent=`${ui.fps.value} FPS`;
-    fillBackground(w,h); ctx.font=`${cell}px monospace`; ctx.textBaseline="top";
+    fillBackground(w,h); ctx.font=`${Math.max(1,cellH)}px monospace`; ctx.textBaseline="top";
     const t=getTime(), mode=ui.mode.value, data=frame.data, glitch=Number(ui.glitch.value)/100;
     for(let y=0;y<state.analyserH;y++) for(let x=0;x<state.analyserW;x++){
       const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
@@ -146,7 +148,7 @@
     if(!file) return; if(state.fileURL) URL.revokeObjectURL(state.fileURL); state.fileURL=URL.createObjectURL(file); state.imageReady=false;
     // Every new source begins as an inspectable still, regardless of any form
     // values the browser restored from a previous session.
-    ui.mode.value="direct"; ui.effect.value="none"; state.playing=false; $("play").textContent="PLAY"; stopResolveAudio();
+    ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; updateReadouts(); state.playing=false; $("play").textContent="PLAY"; stopResolveAudio();
     const isVideo=file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv)$/i.test(file.name); const el=isVideo?document.createElement("video"):new Image();
     state.media=el; state.sourceKind=isVideo?"video":"image"; el.src=state.fileURL; status.textContent=`LOADING // ${file.name.toUpperCase()}`;
     const ready=()=>{ state.imageReady=true; empty.hidden=true; state.playing=false; $("play").textContent="PLAY"; state.started=performance.now(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="STATIC PREVIEW — PICK A STYLE TO ANIMATE"; if(isVideo){el.loop=true;el.muted=true;el.pause();el.currentTime=0;} };

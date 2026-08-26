@@ -57,6 +57,14 @@ uses a different synthesis path—hard-gated noise, fixed-pitch packets, pulse
 trains, FM warble, and filtered static—rather than a shared falling-pitch
 impact or vocal decay.
 
+## Output scale
+
+At **100%**, the output canvas keeps the uploaded source's native pixel width
+and height. Every upload resets to 100% rather than retaining a previous
+canvas size. Output provides a separate 25–200% scale control for deliberate
+up/down scaling; Glyph Size only changes ASCII density, not the output image
+dimensions.
+
 ## Run locally
 
 ```powershell
