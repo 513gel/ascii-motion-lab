@@ -113,6 +113,15 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   matter more than literal editable text. CSS transforms from manual viewport
   zoom can still soften any browser-rendered text; `FIT VIEW` returns it to the
   crisp default scale.
+- Sidebar controls are now divided into Start, Look, Text, Motion, and Output
+  pages. Fresh sessions explicitly reset baseline visual processing: contrast
+  100, left-to-right sweep, glitch 0, scanlines 0, overlay None, and overlay
+  power 0. Stage pan/zoom ignores selects/inputs/textareas so TRUE TEXT is
+  clickable.
+- Iterative Draft was revised to stay on one fixed final grid: first pass uses
+  Unicode block glyphs, each selected cell can blank as a delete operation,
+  then tries scratch symbols before settling on the real sampled glyph. A
+  blinking DOM/canvas caret marks an active random editing cell until lock.
 - Text Foundation now supports multiple local documents in one import, left,
   right, vertical, and spiral traversal, a literal locked sentence, text/ramp
   blend, weighted bold words, local find/replace, and a browser-local reusable

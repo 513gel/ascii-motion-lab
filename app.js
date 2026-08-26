@@ -9,6 +9,9 @@
     effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), tickVoice:$("tick-voice"), previewEngine:$("preview-engine"), prompt:$("prompt"),
     pattern:$("pattern"), patternTarget:$("pattern-target"), patternTile:$("pattern-tile"), borderStyle:$("border-style"), borderMotion:$("border-motion"), divider:$("divider"), safeArea:$("safe-area"), posterMode:$("poster-mode"), posterTitle:$("poster-title"), posterFooter:$("poster-footer"), asciiColumns:$("ascii-columns"), asciiBorder:$("ascii-border"), muteFirstTick:$("mute-first-tick"), muteFinalTick:$("mute-final-tick")
   };
+  // Do not let browser form restoration boot the tool into someone's previous
+  // glitch carnival. New sessions start as a clean, direct baseline.
+  ui.glitch.value="0"; ui.scanlines.value="0"; ui.effect.value="none"; ui.effectPower.value="0"; ui.contrast.value="100"; ui.direction.value="left";
   const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1, lastVisibleGlyphs:0, generationTicks:0, firstTick:true, finalTick:false, viewport:{x:0,y:0,zoom:1} };
   const outputNames={size:"cell-size-out",duration:"duration-out",textScale:"text-scale-out",textBlend:"text-blend-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",outputScale:"output-scale-out",audioLevel:"audio-level-out",safeArea:"safe-area-out"};
   const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:key==="outputScale"?`${ui[key].value}%`:ui[key].value);
@@ -32,6 +35,10 @@
   function undo(){ if(!history.past.length) return; history.future.push(history.current); history.current=history.past.pop(); restoreHistory(history.current,"UNDO"); updateHistoryButtons(); }
   function redo(){ if(!history.future.length) return; history.past.push(history.current); history.current=history.future.pop(); restoreHistory(history.current,"REDO"); updateHistoryButtons(); }
   function fitViewport(record=true){ state.viewport={x:0,y:0,zoom:1}; applyViewport(); if(record) commitHistory(); }
+  function setControlPage(page){
+    document.querySelectorAll(".panel[data-page]").forEach(panel=>panel.hidden=panel.dataset.page!==page);
+    document.querySelectorAll("[data-control-page]").forEach(button=>button.classList.toggle("is-active",button.dataset.controlPage===page));
+  }
   let algoContext=null, algoMaster=null, algoCapture=null, algoTimer=0, algoNodes=[], classicTickBuffer=null, classicTickLoading=null;
   const isAnimated=()=>ui.mode.value!=="direct";
   function stopAlgorithmicAudio(){ clearTimeout(algoTimer); algoTimer=0; algoNodes.forEach(node=>{ try{node.stop?.();node.disconnect?.();}catch{} }); algoNodes=[]; }
@@ -200,11 +207,16 @@
       if(seed(x+9,y+17)>repair) char=corruption[Math.floor(seed(y+31,x+3)*corruption.length)];
     }
     if(mode==="iterative-draft" && progress<.94){
-      // A deliberately imperfect drafting pass: broad marks first, then changing
-      // hypotheses that settle into the sampled glyph as detail arrives.
-      const stage=Math.min(4,Math.floor(progress*5)), draft=[" ░▒▓█"," .,:;/-=+*#@"," .,:;irsXA253hMHGS#9B&@"," .,:;irsXA253hMHGS#9B&@"," .,:;irsXA253hMHGS#9B&@"][stage], confidence=Math.max(0,Math.min(1,(progress-.18)/.76));
-      const revision=seed(x+stage*43,y+stage*97);
-      if(revision>confidence) char=draft[Math.min(draft.length-1,Math.max(0,Math.floor((bright+(seed(x+stage,y-stage)-.5)*.52)*(draft.length-1))))];
+      // Fixed grid, but an actual drafting process: big block marks establish
+      // the mass, individual cells get erased/retried, then settle to truth.
+      const block=" ░▒▓█", scratch=" .,:;/-=+*xX#@", begin=.17+seed(x+71,y+29)*.55, settle=begin+.12+seed(x+17,y+61)*.15;
+      if(progress<.17 || progress<begin){ char=block[Math.min(block.length-1,Math.max(0,Math.floor(bright*(block.length-1))))]; }
+      else if(progress<settle){
+        const attempt=Math.floor((progress-begin)*48), revision=seed(x+attempt*37,y-attempt*19);
+        // The blank is the deletion pass; the next pass types another plausible mark.
+        if(attempt%4===1 && revision>.38) char=" ";
+        else char=scratch[Math.min(scratch.length-1,Math.max(0,Math.floor((bright+(seed(x+attempt,y-attempt)-.5)*.7)*(scratch.length-1))))];
+      }
     }
     if(["fill","both"].includes(ui.patternTarget.value) && ui.pattern.value!=="none" && char!==" ") char=patternGlyph(x,y,bright) || char;
     return char;
@@ -273,6 +285,12 @@
     canvasWrap.style.width=`${Math.max(1,w*displayScale)}px`; canvasWrap.style.height=`${Math.max(1,h*displayScale)}px`;
     liveText.style.fontSize=`${fontSize}px`; liveText.style.lineHeight=`${Math.max(4,cellH*displayScale)}px`; liveText.style.letterSpacing=`${letterSpacing}px`; liveText.textContent=lines.join("\n");
   }
+  function draftCursor(time){
+    if(ui.mode.value!=="iterative-draft") return null; const p=Math.max(0,Math.min(1,time/Number(ui.duration.value))); if(p<.17||p>.94||!state.analyserW||!state.analyserH) return null;
+    const step=Math.floor((p-.17)*42), x=Math.min(state.analyserW-1,Math.floor(seed(step,809)*state.analyserW)), y=Math.min(state.analyserH-1,Math.floor(seed(step,911)*state.analyserH));
+    return {x,y,visible:step%2===0};
+  }
+  function drawDraftCursor(time,cell,cellH){ const cursor=draftCursor(time); if(!cursor||!cursor.visible) return; ctx.save();ctx.globalAlpha=.9;ctx.fillStyle=ui.foreground.value;ctx.fillRect(cursor.x*cell,cursor.y*cellH+Math.max(1,cellH*.86),Math.max(2,cell*.72),Math.max(1,cellH*.08));ctx.restore(); }
   function render(now=performance.now()){
     requestAnimationFrame(render);
     if(!state.imageReady) return;
@@ -295,11 +313,13 @@
       if(liveLines)liveLine+=char; if(char!==" "){ visibleGlyphs++; if(v<.28)darkAdded++; if(v>.72)brightAdded++; }
       ctx.globalAlpha=ui.glyphSource.value==="text"?Math.max(.08,Math.pow(v,.72)):1; ctx.fillStyle=glyphColor(v,r,g,b); ctx.fillText(char,x*cell+jitter,y*cellH);
     } if(liveLines)liveLines.push(liveLine); }
+    const cursor=draftCursor(t); if(liveLines&&cursor&&cursor.visible&&liveLines[cursor.y]){const chars=liveLines[cursor.y].split("");chars[cursor.x]="▌";liveLines[cursor.y]=chars.join("");}
     if(liveLines)updateLiveText(liveLines,w,h,cell,cellH); else updateLiveText([],w,h,cell,cellH);
     const addedGlyphs=Math.max(0,visibleGlyphs-state.lastVisibleGlyphs); tickBuild(addedGlyphs,wasPlaying,{progress:Math.min(1,t/Number(ui.duration.value)),darkMass:darkAdded>brightAdded*1.6,brightMass:brightAdded>darkAdded*1.6}); state.lastVisibleGlyphs=visibleGlyphs;
     ctx.globalAlpha=1;
     const scan=Number(ui.scanlines.value)/100; if(scan){ ctx.fillStyle=`rgba(0,0,0,${scan*.42})`; for(let y=0;y<h;y+=4)ctx.fillRect(0,y,w,1); }
     overlay(t,w,h,cell,cellH);
+    drawDraftCursor(t,cell,cellH);
     drawBorder(w,h,t); drawPoster(w,h);
   }
   function load(file){
@@ -334,7 +354,7 @@
   }
   function applyPreset(name){
     const set=(key,val)=>{ui[key].value=val;};
-    set("effect","none"); set("glitch","8"); set("scanlines","18"); set("fps","30");
+    set("effect","none"); set("glitch","0"); set("scanlines","0"); set("fps","30");
     const presets={
       direct:()=>set("mode","direct"),
       build:()=>set("mode","decode"),
@@ -384,7 +404,7 @@
   ["dragenter","dragover"].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.add("dragging");})); ["dragleave","drop"].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.remove("dragging");})); drop.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
   let panStart=null;
   drop.addEventListener("pointerdown",e=>{
-    if(!state.imageReady || e.button!==0 || e.target.closest("button")) return;
+    if(!state.imageReady || e.button!==0 || e.target.closest("button, select, input, textarea, label")) return;
     panStart={pointerX:e.clientX,pointerY:e.clientY,viewX:state.viewport.x,viewY:state.viewport.y}; drop.setPointerCapture?.(e.pointerId); drop.classList.add("panning"); e.preventDefault();
   });
   drop.addEventListener("pointermove",e=>{
@@ -393,10 +413,11 @@
   const finishPan=()=>{ if(!panStart) return; panStart=null; drop.classList.remove("panning"); commitHistory(); };
   drop.addEventListener("pointerup",finishPan); drop.addEventListener("pointercancel",finishPan);
   drop.addEventListener("wheel",e=>{
-    if(!state.imageReady || e.target.closest("button")) return; e.preventDefault(); const before=state.viewport.zoom, factor=e.deltaY<0?1.12:1/1.12; state.viewport.zoom=Math.max(.25,Math.min(8,before*factor)); if(before===state.viewport.zoom) return; applyViewport(); clearTimeout(viewportCommitTimer); viewportCommitTimer=setTimeout(commitHistory,220);
+    if(!state.imageReady || e.target.closest("button, select, input, textarea, label")) return; e.preventDefault(); const before=state.viewport.zoom, factor=e.deltaY<0?1.12:1/1.12; state.viewport.zoom=Math.max(.25,Math.min(8,before*factor)); if(before===state.viewport.zoom) return; applyViewport(); clearTimeout(viewportCommitTimer); viewportCommitTimer=setTimeout(commitHistory,220);
   },{passive:false});
   $("apply-prompt").onclick=applyPrompt; $("restart").onclick=restart; $("snapshot").onclick=snapshot; $("record").onclick=record;
   $("generate-ascii").onclick=generateAscii; $("copy-ascii").onclick=copyAscii; $("download-ascii").onclick=downloadAscii; $("download-html").onclick=downloadHTML; $("download-md").onclick=downloadMarkdown; $("download-ansi").onclick=downloadANSI;
+  document.querySelectorAll("[data-control-page]").forEach(button=>button.onclick=()=>setControlPage(button.dataset.controlPage));
   document.querySelectorAll("[data-preset]").forEach(button=>button.onclick=()=>applyPreset(button.dataset.preset));
   document.querySelectorAll("[data-prompt]").forEach(button=>button.onclick=()=>{ui.prompt.value=button.dataset.prompt;applyPrompt();});
   ui.charsetPreset.onchange=()=>applyCharacterLibrary(ui.charsetPreset.value);
@@ -414,6 +435,7 @@
     if(state.sourceKind==="video") state.playing?state.media.play():state.media.pause(); syncResolveAudio();
   };
   ui.resolveSound.onchange=()=>syncResolveAudio();
+  ui.previewEngine.onchange=()=>{ state.lastRender=0; };
   ui.audioLevel.oninput=()=>{ if(state.playing&&ui.resolveSound.value==="algorithmic") syncResolveAudio(); };
   ui.duration.onchange=()=>{ if(state.playing)syncResolveAudio(); };
   const updateTextCount=()=>$("text-count").textContent=`${ui.customText.value.length.toLocaleString()} CHARACTERS`;
@@ -433,5 +455,5 @@
     if(e.altKey&&e.key==="ArrowRight"){ e.preventDefault(); redo(); }
   });
   $("toggle-ui").onclick=()=>{document.body.classList.toggle("ui-hidden");$("toggle-ui").textContent=document.body.classList.contains("ui-hidden")?"SHOW UI":"HIDE UI";};
-  updateTextCount(); resetHistory(); applyViewport(); render();
+  setControlPage("start"); updateTextCount(); resetHistory(); applyViewport(); render();
 })();

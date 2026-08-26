@@ -43,7 +43,10 @@
       </section>
 
       <aside id="controls" class="controls">
-        <section class="panel quick-panel">
+        <nav class="control-pages" aria-label="GLYPHSHIFT control pages">
+          <button class="is-active" data-control-page="start">START</button><button data-control-page="look">LOOK</button><button data-control-page="text">TEXT</button><button data-control-page="motion">MOTION</button><button data-control-page="output">OUTPUT</button>
+        </nav>
+        <section class="panel quick-panel" data-page="start">
           <div class="panel-title">QUICK START <span>NO TYPING REQUIRED</span></div>
           <p class="quick-copy">Pick one. Upload something. It just works. Tweak the advanced shit only if you want to.</p>
           <div class="preset-grid">
@@ -57,7 +60,7 @@
           </div>
         </section>
 
-        <section class="panel prompt-panel">
+        <section class="panel prompt-panel" data-page="start">
           <div class="panel-title">TYPE A VIBE <span>OPTIONAL SHORTCUT</span></div>
           <textarea id="prompt" rows="2" placeholder="Try one of the examples below — no AI is hiding behind this box."></textarea>
           <div class="prompt-examples">
@@ -70,7 +73,7 @@
           <p class="hint">This is a local settings shortcut, not generative AI. The buttons above are the normal way to use the app.</p>
         </section>
 
-        <section class="panel">
+        <section class="panel" data-page="look">
           <div class="panel-title">CONVERSION</div>
           <div class="two-col">
             <label>GLYPH SIZE <output id="cell-size-out">9</output>
@@ -82,8 +85,8 @@
             <label>BRIGHTNESS <output id="brightness-out">0</output>
               <input id="brightness" type="range" min="-100" max="100" value="0" />
             </label>
-            <label>CONTRAST <output id="contrast-out">125</output>
-              <input id="contrast" type="range" min="0" max="250" value="125" />
+            <label>CONTRAST <output id="contrast-out">100</output>
+              <input id="contrast" type="range" min="0" max="250" value="100" />
             </label>
           </div>
           <div class="checks">
@@ -92,7 +95,7 @@
           </div>
         </section>
 
-        <section class="panel color-panel">
+        <section class="panel color-panel" data-page="look">
           <div class="panel-title">COLOR + PALETTE</div>
           <div class="two-col">
             <label>COLOR BEHAVIOR
@@ -124,7 +127,7 @@
           <p class="hint"><strong>Auto from source</strong> takes the actual colors from your image/video. In Palette mode, color 5 is the shadow and color 1 is the highlight.</p>
         </section>
 
-        <section class="panel glyph-panel">
+        <section class="panel glyph-panel" data-page="text">
           <div class="panel-title">CHARACTER LIBRARY</div>
           <div class="two-col">
             <label>LIBRARY
@@ -166,33 +169,33 @@
           <p class="hint">Text Foundation can use a few words or an entire document. Glyph Size sets physical character size; Text Repeat and Layout decide how the text moves through the source shape.</p>
         </section>
 
-        <section class="panel">
+        <section class="panel" data-page="motion">
           <div class="panel-title">MOTION + SIGNAL</div>
           <div class="two-col">
             <label>SWEEP
-              <select id="direction"><option value="left">LEFT → RIGHT</option><option value="right">RIGHT → LEFT</option><option value="top">TOP → BOTTOM</option><option value="bottom">BOTTOM → TOP</option><option value="random" selected>PIXEL SORT</option></select>
+              <select id="direction"><option value="left" selected>LEFT → RIGHT</option><option value="right">RIGHT → LEFT</option><option value="top">TOP → BOTTOM</option><option value="bottom">BOTTOM → TOP</option><option value="random">PIXEL SORT</option></select>
             </label>
             <p class="hint compact-hint">Frame rate and duration live in Output, where they belong.</p>
           </div>
           <div class="two-col">
-            <label>GLITCH <output id="glitch-out">8</output>
-              <input id="glitch" type="range" min="0" max="100" value="8" />
+            <label>GLITCH <output id="glitch-out">0</output>
+              <input id="glitch" type="range" min="0" max="100" value="0" />
             </label>
-            <label>SCANLINES <output id="scanlines-out">18</output>
-              <input id="scanlines" type="range" min="0" max="100" value="18" />
+            <label>SCANLINES <output id="scanlines-out">0</output>
+              <input id="scanlines" type="range" min="0" max="100" value="0" />
             </label>
           </div>
           <div class="two-col">
             <label>PROCEDURAL OVERLAY
               <select id="effect"><option value="none" selected>NONE</option><option value="rain">TERMINAL RAIN</option><option value="particles">PARTICLE FIELD</option><option value="waveform">WAVEFORM</option><option value="orb">ASCII ORB</option></select>
             </label>
-            <label>OVERLAY POWER <output id="effect-power-out">35</output>
-              <input id="effect-power" type="range" min="5" max="100" value="35" />
+            <label>OVERLAY POWER <output id="effect-power-out">0</output>
+              <input id="effect-power" type="range" min="0" max="100" value="0" />
             </label>
           </div>
         </section>
 
-        <section class="panel">
+        <section class="panel" data-page="motion">
           <div class="panel-title">PATTERN + BORDER <span>ORIGINAL PROCEDURAL GLYPHS</span></div>
           <div class="two-col">
             <label>PATTERN
@@ -224,7 +227,7 @@
           <p class="hint">Patterns can sit behind the mask, replace visible glyphs as the fill, or do both. They are clean original procedural tiles—made for use and copy/paste, not scraped artwork.</p>
         </section>
 
-        <section class="panel">
+        <section class="panel" data-page="motion">
           <div class="panel-title">POSTER COMPOSER <span>OPTIONAL</span></div>
           <label><input id="poster-mode" type="checkbox" /> POSTER MODE — TITLE / IMAGE / FOOTER</label>
           <div class="two-col">
@@ -233,7 +236,7 @@
           </div>
         </section>
 
-        <section class="panel transport-panel">
+        <section class="panel transport-panel" data-page="output">
           <div class="panel-title">OUTPUT</div>
           <div class="transport">
             <button id="play" class="primary">PLAY</button>
