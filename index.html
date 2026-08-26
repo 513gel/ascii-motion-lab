@@ -157,6 +157,20 @@
             <label><input id="lock-sentence" type="checkbox" /> LOCK ONE SENTENCE</label>
           </div>
           <label><input id="no-text-repeat" type="checkbox" /> USE SUPPLIED TEXT ONCE <span class="field-note">THEN LEAVE REMAINING CELLS BLANK</span></label>
+          <div class="panel-subtitle">TEXT COLOR PASSES</div>
+          <label><input id="text-highlight-enabled" type="checkbox" /> KEEP CHOSEN WORDS COLORED</label>
+          <div class="two-col">
+            <label>WORDS / PHRASES <span class="field-note">COMMA-SEPARATED</span><input id="text-highlight-words" type="text" placeholder="death, memory, oni" spellcheck="false" /></label>
+            <label>WORD COLOR <input id="text-highlight-color" type="color" value="#ef4035" /></label>
+          </div>
+          <label><input id="text-first-pass-enabled" type="checkbox" /> COLOR THE FIRST FULL PASS OF IMPORTED TEXT</label>
+          <div class="two-col">
+            <label>FIRST-PASS COLOR <input id="text-first-pass-color" type="color" value="#ef4035" /></label>
+            <label class="flow-offset-label">FIRST-PASS ORIGIN <span class="field-note">VISIBLE GRID CELL</span>
+              <span class="flow-offsets"><span>X<input id="text-start-x" type="number" min="0" max="200" step="1" value="0" inputmode="numeric" aria-label="First text pass horizontal origin" /></span><span>Y<input id="text-start-y" type="number" min="0" max="200" step="1" value="0" inputmode="numeric" aria-label="First text pass vertical origin" /></span></span>
+            </label>
+          </div>
+          <p class="hint">The first pass begins at X / Y in the visible grid. Text before it wraps as repeated buffer text; the main imported passage gets its own color. This works with Top → Bottom Reading Flow.</p>
           <label>LOCKED SENTENCE
             <input id="locked-sentence" type="text" placeholder="Use only this sentence, repeated" spellcheck="false" />
           </label>
@@ -246,6 +260,19 @@
             <button id="restart" class="ghost">RESTART</button>
             <button id="snapshot" class="ghost">PNG FRAME</button>
           </div>
+          <div class="panel-subtitle">TIMELINE <span>SECONDS</span></div>
+          <div class="timeline-grid">
+            <label>START HOLD
+              <span class="number-stepper"><button type="button" data-timing-adjust="start-hold" data-delta="-0.1" aria-label="Reduce start hold">−</button><input id="start-hold" type="number" min="0" max="30" step="0.1" value="1" inputmode="decimal" /><button type="button" data-timing-adjust="start-hold" data-delta="0.1" aria-label="Increase start hold">+</button></span>
+            </label>
+            <label>BUILD TIME
+              <span class="number-stepper"><button type="button" data-timing-adjust="duration" data-delta="-0.1" aria-label="Reduce build time">−</button><input id="duration" type="number" min="0.1" max="60" step="0.1" value="3.5" inputmode="decimal" /><button type="button" data-timing-adjust="duration" data-delta="0.1" aria-label="Increase build time">+</button></span>
+            </label>
+            <label>END HOLD
+              <span class="number-stepper"><button type="button" data-timing-adjust="end-hold" data-delta="-0.1" aria-label="Reduce end hold">−</button><input id="end-hold" type="number" min="0" max="30" step="0.1" value="5" inputmode="decimal" /><button type="button" data-timing-adjust="end-hold" data-delta="0.1" aria-label="Increase end hold">+</button></span>
+            </label>
+          </div>
+          <p class="hint compact-hint">Each animation holds the start frame, performs the build, then holds the final frame. Type exact values or use ± for 0.1-second moves.</p>
           <div class="copyable-ascii">
             <div class="panel-title">COPYABLE TEXT ART <span>ACTUAL MONOSPACE CHARACTERS</span></div>
             <div class="text-actions"><button id="generate-ascii" class="ghost">GENERATE CURRENT FRAME</button><button id="copy-ascii" class="ghost">COPY TEXT</button></div>
@@ -299,14 +326,11 @@
             </label>
           </div>
           <div class="two-col">
-            <label>BUILD LENGTH <output id="duration-out">3.5s</output>
-              <input id="duration" type="range" min="0.5" max="20" step="0.5" value="3.5" />
-            </label>
             <label>SIZE MULTIPLIER <output id="output-scale-out">100%</output>
               <input id="output-scale" type="range" min="25" max="200" step="5" value="100" />
             </label>
+            <p class="hint compact-hint">Timeline is above; FPS controls how chunky each of those timing phases feels.</p>
           </div>
-          <p class="hint compact-hint">Animated exports add a 1s start-frame lead-in and a 5s final-frame hold around the chosen build length.</p>
           <div class="audio-row">
             <label>SOUND
               <select id="resolve-sound">

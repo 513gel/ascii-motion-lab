@@ -210,9 +210,19 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   policy).
 - Git is configured **locally for this repository only** as `513gel` using
   `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
-- Latest direct-size update: source commit `c100094`; deployed 13thoni commit
-  `fda30e7`. Both passed JavaScript syntax, diff, DOM lookup, and production
-  site build checks before push.
+- Check `git log -1 --oneline` in both repositories for the latest source and
+  deployed commits; source and host updates are always pushed from `main` only
+  after JavaScript syntax, diff, DOM lookup, and production site build checks.
+- Timeline now uses three independent editable number fields with ±0.1-second
+  buttons: Start Hold (0–30s), Build Time (0.1–60s), and End Hold (0–30s).
+  Preview, sound scheduling, final lock, and WebM duration share those values.
+- Text Foundation supports permanent colored words/phrases, plus an optional
+  separate color for exactly the first full source pass. First-pass origin X/Y
+  is measured in visible source-grid cells: text before that anchor wraps as
+  buffer repetitions while the main imported passage begins at the anchor.
+  These color passes intentionally switch TRUE TEXT to Canvas because literal
+  terminal text cannot contain multiple colors; the copyable export remains
+  the same underlying characters.
 - Text Typewriter's color trail is word-based: the currently typing word is
   vermilion; only the four immediately previous words retain any red, rapidly
   fading to almost-white by the fourth. All older text is white.
