@@ -6,7 +6,7 @@
     mode:$("mode"), size:$("cell-size"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textScale:$("text-scale"),
     brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"),
     colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"),
-    effect:$("effect"), effectPower:$("effect-power"), resolveAudio:$("resolve-audio"), audioLevel:$("audio-level"), prompt:$("prompt")
+    effect:$("effect"), effectPower:$("effect-power"), resolveAudio:$("resolve-audio"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), prompt:$("prompt")
   };
   const state = { media:null, fileURL:null, sourceKind:null, playing:false, started:performance.now(), imageReady:false, recording:false, analyserW:0, analyserH:0 };
   const outputNames={size:"cell-size-out",duration:"duration-out",textScale:"text-scale-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",audioLevel:"audio-level-out"};
@@ -14,10 +14,33 @@
   document.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",updateReadouts)); updateReadouts();
   const resolveAudio = new Audio("assets/ascii-resolve-click-loop.mp3");
   resolveAudio.preload="auto"; resolveAudio.loop=true;
+  let algoContext=null, algoMaster=null, algoCapture=null, algoTimer=0, algoNodes=[];
   const isAnimated=()=>ui.mode.value!=="direct";
-  function stopResolveAudio(){ resolveAudio.pause(); resolveAudio.currentTime=0; }
+  function stopAlgorithmicAudio(){ clearTimeout(algoTimer); algoTimer=0; algoNodes.forEach(node=>{ try{node.stop?.();node.disconnect?.();}catch{} }); algoNodes=[]; }
+  function stopResolveAudio(){ resolveAudio.pause(); resolveAudio.currentTime=0; stopAlgorithmicAudio(); }
+  function algorithmicEngine(){
+    if(!algoContext){ algoContext=new (window.AudioContext||window.webkitAudioContext)(); algoMaster=algoContext.createGain(); algoCapture=algoContext.createMediaStreamDestination(); algoMaster.connect(algoContext.destination); algoMaster.connect(algoCapture); }
+    return algoContext.resume();
+  }
+  function algoGate(output,start,duration,level,attack=.003,release=.008){ const gain=algoContext.createGain(), end=start+duration; gain.gain.setValueAtTime(0,start); gain.gain.linearRampToValueAtTime(level,start+attack); gain.gain.setValueAtTime(level,Math.max(start+attack,end-release)); gain.gain.linearRampToValueAtTime(0,end); output.connect(gain); gain.connect(algoMaster); algoNodes.push(gain); }
+  function algoTone(type,freq,start,duration,level,opts={}){ const osc=algoContext.createOscillator(), filter=algoContext.createBiquadFilter(); osc.type=type; osc.frequency.value=freq; filter.type=opts.type||"lowpass"; filter.frequency.value=opts.filter||1800; filter.Q.value=opts.q||2; osc.connect(filter); algoGate(filter,start,duration,level,opts.attack||.003,opts.release||.007); osc.start(start); osc.stop(start+duration+.02); algoNodes.push(osc,filter); }
+  function algoNoise(start,duration,level,opts={}){ const buffer=algoContext.createBuffer(1,Math.max(1,Math.ceil(algoContext.sampleRate*duration)),algoContext.sampleRate), data=buffer.getChannelData(0); let seed=opts.seed||17; for(let i=0;i<data.length;i++){seed=(seed*1664525+1013904223)>>>0;data[i]=(seed/4294967296)*2-1;} const src=algoContext.createBufferSource(), filter=algoContext.createBiquadFilter(); src.buffer=buffer; filter.type=opts.type||"bandpass"; filter.frequency.value=opts.filter||1600; filter.Q.value=opts.q||3; src.connect(filter); algoGate(filter,start,duration,level,opts.attack||.002,opts.release||.006); src.start(start);src.stop(start+duration+.02);algoNodes.push(src,filter); }
+  function algorithmicCycle(){
+    if(!state.playing || !isAnimated() || !ui.resolveAudio.checked || ui.resolveSound.value!=="algorithmic") return;
+    stopAlgorithmicAudio(); const seconds=Math.max(.8,Number(ui.duration.value)), start=algoContext.currentTime+.03, scale=Math.max(.5,seconds/3.5), level=Number(ui.audioLevel.value)/100; algoMaster.gain.setValueAtTime(level,start);
+    // Memory Leak: a low dirty bed that never falls in pitch, avoiding the old ball-bounce tail.
+    [0,.14,.28,.42].forEach((p,i)=>{ const at=start+p*scale; algoTone("sawtooth",[72,75,78,82][i],at,.09*scale,.095,{filter:420,q:3,release:.006}); algoNoise(at,.06*scale,.032,{filter:520+i*90,q:3,seed:91+i,release:.004}); });
+    // Cache Miss: scattered comparisons plus a missing-data burst during the build.
+    [[.74,230],[.80,740],[.86,320]].forEach(([p,f],i)=>{ const at=start+p*scale; algoTone("square",f,at,.018*scale,.075,{filter:1900,q:7,release:.001}); algoNoise(at,.014*scale,.025,{filter:2700,q:8,seed:101+i,release:.001}); });
+    algoNoise(start+1.02*scale,.07*scale,.085,{filter:3100,q:3,seed:109,release:.002});
+    // Heap Clack: the strong lock-in beats arrive near the end.
+    [[1.48,86],[1.68,132],[1.88,86],[2.08,168],[2.28,112]].forEach(([p,f],i)=>{ const at=start+p*scale; algoTone("square",f,at,.04*scale,.12,{filter:520,q:5,release:.001}); algoNoise(at,.018*scale,.038,{filter:860,q:7,seed:121+i,release:.001}); });
+    algoTimer=window.setTimeout(algorithmicCycle,seconds*1000);
+  }
   function syncResolveAudio(){
     if(!state.playing || !isAnimated() || !ui.resolveAudio.checked){ stopResolveAudio(); return; }
+    if(ui.resolveSound.value==="algorithmic"){ resolveAudio.pause(); algorithmicEngine().then(algorithmicCycle).catch(()=>{ transport.textContent="TAP PLAY TO ENABLE SOUND"; }); return; }
+    stopAlgorithmicAudio();
     resolveAudio.volume=Number(ui.audioLevel.value)/100;
     if(Number.isFinite(resolveAudio.duration) && resolveAudio.duration>0) resolveAudio.playbackRate=Math.max(.3,Math.min(3,resolveAudio.duration/Number(ui.duration.value)));
     resolveAudio.currentTime=0; resolveAudio.play().catch(()=>{ transport.textContent="TAP PLAY TO ENABLE SOUND"; });
@@ -165,7 +188,7 @@
   function restart(){ state.started=performance.now(); if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent="RESTARTED"; }
   function snapshot(){ const a=document.createElement("a");a.download="ascii-motion-frame.png";a.href=out.toDataURL("image/png");a.click(); }
   async function record(){ if(!state.imageReady||state.recording)return; if(!window.MediaRecorder){transport.textContent="MEDIARECORDER NOT AVAILABLE";return;} state.recording=true; $("record").classList.add("recording"); $("record").textContent="● RECORDING…"; restart();
-    const stream=out.captureStream(Number(ui.fps.value)); const audioStream=ui.resolveAudio.checked && resolveAudio.captureStream ? resolveAudio.captureStream() : null; audioStream?.getAudioTracks().forEach(track=>stream.addTrack(track)); const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"; const rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8_000_000}); const chunks=[];
+    const stream=out.captureStream(Number(ui.fps.value)); let audioStream=null; if(ui.resolveAudio.checked){ if(ui.resolveSound.value==="algorithmic"){ await algorithmicEngine(); audioStream=algoCapture?.stream; } else if(resolveAudio.captureStream) audioStream=resolveAudio.captureStream(); } audioStream?.getAudioTracks().forEach(track=>stream.addTrack(track)); const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"; const rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8_000_000}); const chunks=[];
     rec.ondataavailable=e=>e.data.size&&chunks.push(e.data); rec.onstop=()=>{ const blob=new Blob(chunks,{type});const a=document.createElement("a");a.download="ascii-motion-loop.webm";a.href=URL.createObjectURL(blob);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);state.recording=false;$("record").classList.remove("recording");$("record").textContent="● EXPORT LOOP (WEBM + SOUND)";transport.textContent="WEBM EXPORTED"; };
     rec.start(); setTimeout(()=>rec.stop(),Number(ui.duration.value)*1000);
   }
@@ -180,6 +203,8 @@
   [ui.colorMode,ui.paletteSize,ui.backgroundStyle,ui.foreground,ui.palette2,ui.palette3,ui.palette4,ui.palette5,ui.background,ui.background2].forEach(control=>control.addEventListener("input",markPaletteCustom));
   $("play").onclick=()=>{state.playing=!state.playing;$("play").textContent=state.playing?"PAUSE":"PLAY";transport.textContent=state.playing?"PLAYING":"PAUSED"; if(state.sourceKind==="video")state.playing?state.media.play():state.media.pause(); syncResolveAudio();};
   ui.resolveAudio.onchange=()=>{ if(ui.resolveAudio.checked)syncResolveAudio(); else stopResolveAudio(); };
+  ui.resolveSound.onchange=()=>syncResolveAudio();
+  ui.audioLevel.oninput=()=>{ if(algoMaster&&algoContext) algoMaster.gain.setValueAtTime(Number(ui.audioLevel.value)/100,algoContext.currentTime); if(ui.resolveSound.value==="classic") resolveAudio.volume=Number(ui.audioLevel.value)/100; };
   ui.duration.onchange=()=>{ if(state.playing)syncResolveAudio(); };
   $("toggle-ui").onclick=()=>{document.body.classList.toggle("ui-hidden");$("toggle-ui").textContent=document.body.classList.contains("ui-hidden")?"SHOW UI":"HIDE UI";};
   render();

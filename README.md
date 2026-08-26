@@ -33,11 +33,13 @@ maps a few obvious phrases to the same visible controls—it is not an AI model.
 
 ## Resolve sound
 
-Animated presets can play a 3.5-second, loop-safe click/glitch cue precisely
-from the beginning of each resolve cycle. It is enabled by default, can be
-muted or level-adjusted in Output, and is included in Chrome/desktop WebM
-exports when the browser exposes audio capture. The cue was derived from
-Johnmode's CC0 Freesound sound 826671; source page:
+Animated presets can play a generated **Algorithmic Resolve** by default. It
+layers a low *Memory Leak* bed beneath the animation, sparse *Cache Miss*
+packets through the build, and stronger *Heap Clack* lock-in beats near the
+end. It can be muted or level-adjusted in Output and is included in Chrome/
+desktop WebM exports when the browser exposes Web Audio capture. The original
+3.5-second click/glitch loop remains selectable as **Classic**; it was derived
+from Johnmode's CC0 Freesound sound 826671, source page:
 https://freesound.org/people/Johnmode/sounds/826671/
 
 ## Resolve Sound Lab

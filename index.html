@@ -181,11 +181,17 @@
             <button id="snapshot" class="ghost">PNG FRAME</button>
           </div>
           <div class="audio-row">
-            <label><input id="resolve-audio" type="checkbox" checked /> SYNC CLICK SOUND</label>
+            <label><input id="resolve-audio" type="checkbox" checked /> SYNC RESOLVE SOUND</label>
+            <label>SOUND DNA
+              <select id="resolve-sound">
+                <option value="algorithmic" selected>ALGORITHMIC // HEAP + CACHE + MEMORY</option>
+                <option value="classic">CLASSIC // CLICK LOOP</option>
+              </select>
+            </label>
             <label>LEVEL <output id="audio-level-out">65</output><input id="audio-level" type="range" min="0" max="100" value="65" /></label>
           </div>
           <button id="record" class="record">● EXPORT LOOP (WEBM + SOUND)</button>
-          <p id="export-note" class="hint">The resolve click is synced to each animated preset. Native browser export is WebM; MP4 export is planned through an optional local FFmpeg companion.</p>
+          <p id="export-note" class="hint">Algorithmic Resolve layers Memory Leak under the animation, drops Cache Miss through the build, then lands Heap Clack at lock-in. Native browser export is WebM; MP4 export is planned through an optional local FFmpeg companion.</p>
         </section>
       </aside>
     </main>

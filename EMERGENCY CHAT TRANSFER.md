@@ -39,9 +39,14 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   control-panel taps. Verified that a Direct preset tap does not open it.
 - Every newly selected source is explicitly reset to `Direct ASCII — Still`
   and paused, avoiding Chrome form-state restoration of a prior animation mode.
-- `assets/ascii-resolve-click-loop.mp3` is a 3.500-second loop-safe cue made
-  from Johnmode Freesound 826671 (CC0). Animated presets restart and loop it in
-  sync with the resolve cycle; Output has a mute toggle and level control.
+- Animated presets now default to a generated **Algorithmic Resolve** Web Audio
+  layer: Memory Leak is the quiet fixed-pitch low bed, Cache Miss creates sparse
+  comparison packets mid-build, and Heap Clack supplies major lock-in beats.
+  Output offers a mute toggle, level control, and a selector for Algorithmic or
+  Classic click-loop sound DNA. The generated graph has its own MediaStream
+  destination so its audio is added to WebM exports when browser support exists.
+  `assets/ascii-resolve-click-loop.mp3` remains available as Classic; it is a
+  3.500-second loop-safe cue made from Johnmode Freesound 826671 (CC0).
 - Color control now supports a single editable foreground color, 2–5 color
   brightness palettes, and real RGB source-color sampling. Palette presets:
   Monochrome, Oni Blood, Cobalt Signal, Phosphor Green, Amber Terminal, Game
@@ -76,9 +81,11 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   browser-checked. The current data-texture replacement parses with Node, has
   20 entries, and validates that every tile references a real recipe. The
   connected browser still reported no controllable tabs after the change, so
-  post-edit audio audition must be done manually from the live Sound Lab. MP4
-  export and AI-video handoff are future additions; FFmpeg should remain
-  optional and local.
+  post-edit audio audition must be done manually from the live Sound Lab. The
+  Algorithmic Resolve integration passes static JavaScript/UI checks but still
+  needs an audible desktop test and WebM-export test from the user. MP4 export
+  and AI-video handoff are future additions; FFmpeg should remain optional and
+  local.
 
 ## Run
 
