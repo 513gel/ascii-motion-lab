@@ -4,12 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#050505" />
-    <title>ASCII MOTION LAB</title>
+    <meta name="description" content="GLYPHSHIFT — local-first ASCII, text, pattern and motion design." />
+    <link rel="icon" href="assets/icons/monotrace-favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icons/monotrace-mark.svg" />
+    <link rel="manifest" href="site.webmanifest" />
+    <title>GLYPHSHIFT — ASCII MOTION TOOL</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="topbar">
-      <div class="brand">ASCII<span>//</span>MOTION <small>LAB 001</small></div>
+      <div class="brand"><img src="assets/icons/monotrace-favicon.svg" alt="" />GLYPH<span>SHIFT</span> <small>ASCII / MOTION</small></div>
       <div id="source-status" class="status">NO SOURCE LOADED</div>
       <div class="top-actions">
         <button id="undo" class="ghost" title="Undo last edit (Ctrl+Z)">← UNDO</button>
@@ -134,17 +138,30 @@
           </label>
           <div class="two-col">
             <label>TEXT LAYOUT
-              <select id="text-layout"><option value="flow" selected>CONTINUOUS FLOW</option><option value="lines">PRESERVE LINES</option><option value="reverse">REVERSE FLOW</option></select>
+              <select id="text-layout"><option value="flow" selected>LEFT → RIGHT FLOW</option><option value="reverse">RIGHT → LEFT FLOW</option><option value="lines">PRESERVE LINES</option><option value="vertical">VERTICAL FLOW</option><option value="spiral">SPIRAL FLOW</option></select>
             </label>
             <label>TEXT REPEAT <output id="text-scale-out">1</output>
               <input id="text-scale" type="range" min="1" max="8" step="1" value="1" />
             </label>
           </div>
+          <div class="two-col">
+            <label>TEXT / RAMP BLEND <output id="text-blend-out">100</output>
+              <input id="text-blend" type="range" min="0" max="100" value="100" />
+            </label>
+            <label><input id="lock-sentence" type="checkbox" /> LOCK ONE SENTENCE</label>
+          </div>
+          <label>LOCKED SENTENCE
+            <input id="locked-sentence" type="text" placeholder="Use only this sentence, repeated" spellcheck="false" />
+          </label>
           <label>PASTE OR IMPORT TEXT <span id="text-count" class="field-note">0 CHARACTERS</span>
             <textarea id="custom-text" rows="6" placeholder="Paste lyrics, dialogue, a script, a quote, notes, or an entire text file. Text Foundation uses this as the visible material of the image."></textarea>
           </label>
           <div class="text-actions"><button id="import-text" class="ghost">IMPORT .TXT / .MD</button><button id="clear-text" class="ghost">CLEAR TEXT</button></div>
-          <input id="text-file-input" class="file-input" type="file" accept="text/plain,.txt,.md,.csv" aria-label="Import a text file" />
+          <label>BOLD WORDS <span class="field-note">SEPARATE WITH COMMAS</span><input id="bold-words" type="text" placeholder="oni, signal, memory" spellcheck="false" /></label>
+          <div class="two-col"><label>FIND <input id="find-text" type="text" spellcheck="false" /></label><label>REPLACE <input id="replace-text" type="text" spellcheck="false" /></label></div>
+          <div class="text-actions"><button id="clean-text" class="ghost">SEARCH / REPLACE</button><button id="save-text-preset" class="ghost">SAVE TEXT PRESET</button></div>
+          <button id="load-text-preset" class="ghost full">LOAD SAVED TEXT PRESET</button>
+          <input id="text-file-input" class="file-input" type="file" accept="text/plain,.txt,.md,.csv" multiple aria-label="Import text files" />
           <p class="hint">Text Foundation can use a few words or an entire document. Glyph Size sets physical character size; Text Repeat and Layout decide how the text moves through the source shape.</p>
         </section>
 
@@ -174,6 +191,47 @@
           </div>
         </section>
 
+        <section class="panel">
+          <div class="panel-title">PATTERN + BORDER <span>ORIGINAL PROCEDURAL GLYPHS</span></div>
+          <div class="two-col">
+            <label>PATTERN
+              <select id="pattern"><option value="none" selected>NONE</option><option value="hatch">HATCH</option><option value="wave">WAVE</option><option value="cross">CROSS-STITCH</option><option value="maze">MAZE</option><option value="checker">CHECKER</option><option value="custom">CUSTOM TILE</option></select>
+            </label>
+            <label>PATTERN USE
+              <select id="pattern-target"><option value="background">BACKGROUND</option><option value="fill" selected>TEXT FILL</option><option value="both">BACKGROUND + FILL</option></select>
+            </label>
+          </div>
+          <label>CUSTOM PATTERN TILE
+            <input id="pattern-tile" type="text" value="░▒▓█" maxlength="80" spellcheck="false" />
+          </label>
+          <div class="two-col">
+            <label>BORDER
+              <select id="border-style"><option value="none" selected>NONE</option><option value="single">SINGLE BOX</option><option value="double">DOUBLE BOX</option><option value="corners">HEAVY CORNERS</option><option value="wave">WAVE EDGE</option><option value="terminal">TERMINAL FRAME</option></select>
+            </label>
+            <label>BORDER MOTION
+              <select id="border-motion"><option value="still" selected>STILL</option><option value="draw">DRAW WITH BUILD</option><option value="distort">DISTORT WITH BUILD</option></select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>DIVIDER
+              <select id="divider"><option value="none" selected>NONE</option><option value="dots">DOTS</option><option value="cross">CROSS</option><option value="wave">WAVE</option><option value="maze">MAZE</option></select>
+            </label>
+            <label>ORNAMENT SAFE AREA <output id="safe-area-out">5</output>
+              <input id="safe-area" type="range" min="0" max="20" value="5" />
+            </label>
+          </div>
+          <p class="hint">Patterns can sit behind the mask, replace visible glyphs as the fill, or do both. They are clean original procedural tiles—made for use and copy/paste, not scraped artwork.</p>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">POSTER COMPOSER <span>OPTIONAL</span></div>
+          <label><input id="poster-mode" type="checkbox" /> POSTER MODE — TITLE / IMAGE / FOOTER</label>
+          <div class="two-col">
+            <label>TITLE <input id="poster-title" type="text" placeholder="TITLE" spellcheck="false" /></label>
+            <label>FOOTER <input id="poster-footer" type="text" placeholder="// FOOTER" spellcheck="false" /></label>
+          </div>
+        </section>
+
         <section class="panel transport-panel">
           <div class="panel-title">OUTPUT</div>
           <div class="transport">
@@ -184,13 +242,28 @@
           <div class="copyable-ascii">
             <div class="panel-title">COPYABLE TEXT ART <span>ACTUAL MONOSPACE CHARACTERS</span></div>
             <div class="text-actions"><button id="generate-ascii" class="ghost">GENERATE CURRENT FRAME</button><button id="copy-ascii" class="ghost">COPY TEXT</button></div>
+            <div class="two-col">
+              <label>COLUMN WIDTH <select id="ascii-columns"><option value="source" selected>SOURCE GRID</option><option value="40">40 — DISCORD</option><option value="80">80 — TERMINAL</option><option value="120">120 — WIDE</option></select></label>
+              <label><input id="ascii-border" type="checkbox" /> INCLUDE BORDER</label>
+            </div>
+            <div class="text-actions"><button id="download-ascii" class="ghost">DOWNLOAD .TXT</button><button id="download-html" class="ghost">HTML &lt;PRE&gt;</button></div>
+            <div class="text-actions"><button id="download-md" class="ghost">MARKDOWN</button><button id="download-ansi" class="ghost">ANSI .TXT</button></div>
             <textarea id="ascii-export" rows="8" readonly spellcheck="false" placeholder="Generate a frame to get literal copy-pasteable text art here."></textarea>
             <p class="hint">Use Dense ASCII, English, or Binary for strict 7-bit ASCII. Other libraries are still copyable text art, but may use Unicode characters.</p>
           </div>
           <label>BUILD STYLE
             <select id="mode">
               <option value="direct" selected>DIRECT ASCII — STILL</option>
-              <option value="decode">CHARACTER BUILD / DECODE</option>
+              <option value="decode">GLYPH SCATTER</option>
+              <option value="line-printer">LINE PRINTER</option>
+              <option value="threshold-flood">THRESHOLD FLOOD / BRIGHTS FIRST</option>
+              <option value="coarse-mosaic">COARSE MOSAIC / GRID HALVES</option>
+              <option value="horizontal-sync">HORIZONTAL SYNC</option>
+              <option value="terminal-rain">VERTICAL TERMINAL RAIN</option>
+              <option value="edge-skeleton">EDGE SKELETON</option>
+              <option value="word-reveal">WORD REVEAL</option>
+              <option value="compression-decode">COMPRESSION DECODE</option>
+              <option value="corruption-repair">CORRUPTION REPAIR</option>
               <option value="glyph-build">GLYPH COLLAPSE / LARGE → SET SIZE</option>
               <option value="pixel-sort">PIXEL-SORT REVEAL</option>
               <option value="scanline">SCANLINE DEVELOP</option>
@@ -232,6 +305,7 @@
             </label>
             <label>LEVEL <output id="audio-level-out">55</output><input id="audio-level" type="range" min="0" max="100" value="55" /></label>
           </div>
+          <div class="checks"><label><input id="mute-first-tick" type="checkbox" /> MUTE FIRST TICK</label><label><input id="mute-final-tick" type="checkbox" /> MUTE END-LOCK</label></div>
           <button id="record" class="record">● EXPORT BUILD (WEBM)</button>
           <p id="export-note" class="hint">Classic Tick fires once per rendered build step—set 6–12 FPS for deliberately chunky arrivals. Data Texture is optional ambient sound, not combined with Classic. The frame holds after the build; export captures the one-shot build.</p>
         </section>

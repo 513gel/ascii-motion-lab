@@ -4,7 +4,7 @@ Last updated: `2026-08-26 America/New_York`
 
 ## Objective
 
-Build **ASCII MOTION LAB**, a local-first browser motion-design tool that takes
+Build **GLYPHSHIFT**, a local-first browser motion-design tool that takes
 still images, animated GIFs, and browser-playable videos and renders animated
 ASCII art. Main requested aesthetic: white characters on a black background,
 with character-by-character reveal and pixel-sort-like transitions.
@@ -16,6 +16,11 @@ with character-by-character reveal and pixel-sort-like transitions.
 Remote: `https://github.com/513gel/ascii-motion-lab`
 
 Live app: `https://513gel.github.io/ascii-motion-lab/`
+
+13th Oni host source: `C:\Users\xxxye\Documents\Codex\2026-08-02\files-mentioned-by-the-user-codex\13thoni-site`
+
+GLYPHSHIFT is copied into `13thoni-site\public\GLYPHSHIFT\` and is linked
+from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
 
 ## Current state
 
@@ -76,6 +81,30 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   driven by an arbitrary timer. Avoid one sound per individual cell because
   a dense frame can add thousands at once; each audible event is a real
   rendering batch.
+- Branding is now **GLYPHSHIFT**. The static app ships an original SVG icon
+  suite (favicon, app mark, and maskable mark) plus a web manifest.
+- The build selector now includes Line Printer, Glyph Scatter, Threshold Flood,
+  Coarse Mosaic, Horizontal Sync, Vertical Terminal Rain, Edge Skeleton, Word
+  Reveal, Compression Decode, and Corruption Repair, while retaining the older
+  direct, pixel-sort, scanline, terminal, and glyph-collapse tools.
+- Pattern controls provide original procedural hatch, wave, cross-stitch, maze,
+  checker, and custom-tile glyph patterns for background, text fill, or both.
+  The app also includes original single/double/corner/wave/terminal borders,
+  dividers, safe-area control, build-linked border drawing/distortion, and a
+  simple title/image/footer Poster Mode.
+- Generation audio now classifies real batches: rows have printer-like ticks,
+  scattered arrivals have short ticks, dark masses clack low, highlights ping
+  high, and final arrivals lock. First and final ticks can be muted independently.
+- Text Foundation now supports multiple local documents in one import, left,
+  right, vertical, and spiral traversal, a literal locked sentence, text/ramp
+  blend, weighted bold words, local find/replace, and a browser-local reusable
+  text preset.
+- Copyable text output has a source/40/80/120-column selector plus optional
+  box border and direct .txt, HTML `<pre>`, Markdown, and ANSI-text downloads.
+- `13thoni-site` was cloned fresh on 2026-08-26, GLYPHSHIFT was copied into its
+  `public/GLYPHSHIFT` folder, its terminal node was changed to an online link,
+  and `npm run build` passed locally after `npm ci`. Pushing `main` deploys it
+  only if the existing Cloudflare/GitHub production hookup is active.
 - Animated presets are now build-and-hold: once the duration completes, the
   renderer freezes on the fully resolved final frame, stops resolve audio,
   pauses any video source, and changes Play to Replay. Restart resets the

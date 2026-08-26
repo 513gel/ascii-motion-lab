@@ -1,4 +1,4 @@
-# ASCII MOTION LAB
+# GLYPHSHIFT
 
 Local, browser-based ASCII motion tool for turning images, animated GIFs, and
 browser-playable video into white-on-black animated character art.
