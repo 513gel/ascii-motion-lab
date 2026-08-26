@@ -42,10 +42,12 @@ https://freesound.org/people/Johnmode/sounds/826671/
 
 ## Resolve Sound Lab
 
-`sound-lab.html` is a small phone-friendly audition board containing 40
-browser-synthesized candidates for character arrivals. It has no samples or
-external dependencies; choose a sound code there before integrating a
-generated sound engine into the main converter.
+`sound-lab.html` is a small phone-friendly audition board containing 20
+browser-synthesized **Chunky Chatter** candidates for character arrivals:
+crunchy fictional pseudo-speech built from formant chirps, square-wave edges,
+pitch jumps, noise, and stutters. It has no samples or external dependencies;
+choose a sound code there before integrating that sound DNA into the main
+converter.
 
 ## Run locally
 
