@@ -138,7 +138,10 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   Reading Flow** advances the source only through filled/visible image cells,
   so the first character begins at the top of a subject and the quote remains
   readable through its silhouette rather than being consumed by the black
-  background.
+  background. Flow normalizes pasted newlines/tabs into ordinary spaces so a
+  document can never inject accidental physical rows into the ASCII grid. The
+  **Use supplied text once** toggle stops after the exact supplied material and
+  leaves remaining cells blank; default behavior remains repeat/fill.
 - Copyable text output has a source/40/80/120-column selector plus optional
   box border and direct .txt, HTML `<pre>`, Markdown, and ANSI-text downloads.
 - `13thoni-site` was cloned fresh on 2026-08-26, GLYPHSHIFT was copied into its

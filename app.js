@@ -3,7 +3,7 @@
   const out = $("output"), ctx = out.getContext("2d"), sample = document.createElement("canvas"), sctx = sample.getContext("2d", { willReadFrequently:true });
   const fileInput=$("file-input"), textFileInput=$("text-file-input"), drop=$("drop-zone"), canvasWrap=$("canvas-wrap"), liveText=$("live-text"), empty=$("empty-state"), status=$("source-status"), transport=$("transport-status");
   const ui = {
-    mode:$("mode"), size:$("cell-size"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textLayout:$("text-layout"), textScale:$("text-scale"), textBlend:$("text-blend"), lockSentence:$("lock-sentence"), lockedSentence:$("locked-sentence"), boldWords:$("bold-words"), findText:$("find-text"), replaceText:$("replace-text"),
+    mode:$("mode"), size:$("cell-size"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textLayout:$("text-layout"), textScale:$("text-scale"), textBlend:$("text-blend"), noTextRepeat:$("no-text-repeat"), lockSentence:$("lock-sentence"), lockedSentence:$("locked-sentence"), boldWords:$("bold-words"), findText:$("find-text"), replaceText:$("replace-text"),
     brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"),
     colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"),
     effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), tickVoice:$("tick-voice"), previewEngine:$("preview-engine"), prompt:$("prompt"),
@@ -11,7 +11,7 @@
   };
   // Do not let browser form restoration boot the tool into someone's previous
   // glitch carnival. New sessions start as a clean, direct baseline.
-  ui.glitch.value="0"; ui.scanlines.value="0"; ui.effect.value="none"; ui.effectPower.value="0"; ui.contrast.value="100"; ui.direction.value="left";
+  ui.glitch.value="0"; ui.scanlines.value="0"; ui.effect.value="none"; ui.effectPower.value="0"; ui.contrast.value="100"; ui.direction.value="left"; ui.noTextRepeat.checked=false;
   const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1, lastVisibleGlyphs:0, generationTicks:0, firstTick:true, finalTick:false, textMode:true, manualText:"", viewport:{x:0,y:0,zoom:1} };
   const outputNames={size:"cell-size-out",duration:"duration-out",textScale:"text-scale-out",textBlend:"text-blend-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",outputScale:"output-scale-out",audioLevel:"audio-level-out",safeArea:"safe-area-out"};
   const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:key==="outputScale"?`${ui[key].value}%`:ui[key].value);
@@ -189,14 +189,19 @@
       if(p<.07) return " ";
       const repeat=Math.max(1,Number(ui.textScale.value));
       if(ui.textLayout.value==="lines"){
-        const lines=text.split("\n").filter(line=>line.length); const line=(lines.length?lines[y%lines.length]:text) || text;
-        return line[Math.floor(x/repeat)%line.length] || " ";
+        const lines=text.split("\n").filter(line=>line.length), lineIndex=ui.noTextRepeat.checked?y:y%Math.max(1,lines.length), line=lines[lineIndex]||"";
+        const characterIndex=Math.floor(x/repeat); return ui.noTextRepeat.checked&&characterIndex>=line.length?" ":line[characterIndex%Math.max(1,line.length)]||" ";
       }
+      // Newlines from a pasted document must never become real line breaks in
+      // the image grid. Flow turns all document whitespace into a normal,
+      // visible word-space; only the renderer decides when a grid row ends.
+      text=text.replace(/\s+/g," ").trim() || ramp;
       // Flow is deliberately counted through *visible* cells, not every cell
       // in the source rectangle. That makes the first written character land
       // at the first filled cell at the top of the subject, then read naturally
       // through its silhouette instead of consuming the quote in black space.
       let index=textFlowIndex===null?Math.floor((x+y*state.analyserW)/repeat):Math.floor(textFlowIndex/repeat);
+      if(ui.noTextRepeat.checked&&index>=text.length) return " ";
       index%=text.length;
       if(ui.textLayout.value==="vertical") index=Math.floor((y+x*state.analyserH)/repeat)%text.length;
       if(ui.textLayout.value==="spiral") index=Math.floor((Math.hypot(x-state.analyserW/2,y-state.analyserH/2)*4+Math.atan2(y-state.analyserH/2,x-state.analyserW/2)*12)/repeat)%text.length;
@@ -498,8 +503,8 @@
   textFileInput.onchange=async e=>{ const files=[...e.target.files]; e.target.value=""; if(!files.length) return; try{ const docs=await Promise.all(files.map(file=>file.text())); ui.customText.value=docs.join("\n\n"); ui.glyphSource.value="text"; updateTextCount(); state.lastRender=0; commitHistory(); transport.textContent=`${files.length} TEXT ${files.length===1?"DOCUMENT":"DOCUMENTS"} IMPORTED — TEXT FOUNDATION ACTIVE`; }catch{ transport.textContent="TEXT IMPORT FAILED"; } };
   $("clear-text").onclick=()=>{ ui.customText.value=""; updateTextCount(); state.lastRender=0; commitHistory(); transport.textContent="TEXT CLEARED"; };
   $("clean-text").onclick=()=>{ const find=ui.findText.value; if(!find){transport.textContent="TYPE SOMETHING TO FIND";return;} ui.customText.value=ui.customText.value.split(find).join(ui.replaceText.value);updateTextCount();state.lastRender=0;commitHistory();transport.textContent="TEXT CLEANED"; };
-  $("save-text-preset").onclick=()=>{ const preset={text:ui.customText.value,layout:ui.textLayout.value,blend:ui.textBlend.value,repeat:ui.textScale.value,locked:ui.lockSentence.checked,sentence:ui.lockedSentence.value,bold:ui.boldWords.value};try{localStorage.setItem("glyphshift-text-preset",JSON.stringify(preset));transport.textContent="TEXT PRESET SAVED IN THIS BROWSER";}catch{transport.textContent="TEXT PRESET COULD NOT SAVE";} };
-  $("load-text-preset").onclick=()=>{ try{const preset=JSON.parse(localStorage.getItem("glyphshift-text-preset")||"null");if(!preset){transport.textContent="NO SAVED TEXT PRESET";return;}ui.customText.value=preset.text||"";if(ui.customText.value.trim())ui.glyphSource.value="text";ui.textLayout.value=preset.layout||"flow";ui.textBlend.value=preset.blend||"100";ui.textScale.value=preset.repeat||"1";ui.lockSentence.checked=!!preset.locked;ui.lockedSentence.value=preset.sentence||"";ui.boldWords.value=preset.bold||"";updateTextCount();updateReadouts();state.lastRender=0;commitHistory();transport.textContent="TEXT PRESET LOADED — TEXT FOUNDATION ACTIVE";}catch{transport.textContent="TEXT PRESET COULD NOT LOAD";} };
+  $("save-text-preset").onclick=()=>{ const preset={text:ui.customText.value,layout:ui.textLayout.value,blend:ui.textBlend.value,repeat:ui.textScale.value,once:ui.noTextRepeat.checked,locked:ui.lockSentence.checked,sentence:ui.lockedSentence.value,bold:ui.boldWords.value};try{localStorage.setItem("glyphshift-text-preset",JSON.stringify(preset));transport.textContent="TEXT PRESET SAVED IN THIS BROWSER";}catch{transport.textContent="TEXT PRESET COULD NOT SAVE";} };
+  $("load-text-preset").onclick=()=>{ try{const preset=JSON.parse(localStorage.getItem("glyphshift-text-preset")||"null");if(!preset){transport.textContent="NO SAVED TEXT PRESET";return;}ui.customText.value=preset.text||"";if(ui.customText.value.trim())ui.glyphSource.value="text";ui.textLayout.value=preset.layout||"flow";ui.textBlend.value=preset.blend||"100";ui.textScale.value=preset.repeat||"1";ui.noTextRepeat.checked=!!preset.once;ui.lockSentence.checked=!!preset.locked;ui.lockedSentence.value=preset.sentence||"";ui.boldWords.value=preset.bold||"";updateTextCount();updateReadouts();state.lastRender=0;commitHistory();transport.textContent="TEXT PRESET LOADED — TEXT FOUNDATION ACTIVE";}catch{transport.textContent="TEXT PRESET COULD NOT LOAD";} };
   document.querySelectorAll("#controls input, #controls select, #controls textarea").forEach(control=>{ if(control.type!=="file") control.addEventListener("change",commitHistory); });
   window.addEventListener("keydown",e=>{
     if(e.target.matches("input, textarea, select, [contenteditable='true']")) return;
