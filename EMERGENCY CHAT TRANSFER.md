@@ -57,12 +57,14 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
 - `sound-lab.html` is a dependency-free mobile audition board with exactly 20
   local Web Audio **Chunky Chatter** candidates for ASCII arrivals. All prior
   detail, organic, signal, resolve, and magnetic-click candidates were removed
-  at the user's request. The pack is now divided into 8 Low-Formant Thunks,
-  6 Crunch Mouths, and 6 Datamosh Beasts; low entries use a dedicated driven
-  sub-thump layer in addition to formant chirps, square-wave crunch, pitch
-  jumps, noise, and stutters. It is deliberately separate from the converter
-  until the user selects a sound DNA. The page requires a tap before audio can
-  start (browser autoplay policy).
+  at the user's request. It is now divided into 8 Low Data Textures, 6 Crunch
+  Mouths, and 6 Datamosh Beasts. The common falling sub-thump and decaying
+  formant recipe was removed after the user correctly identified it as making
+  every tile sound like a PS1 ball bounce. The 20 current tiles use distinct
+  hard-gated noise, constant-pitch formants, pulse trains, FM warble, clipped
+  radio speech, or filtered-static paths instead. It is deliberately separate
+  from the converter until the user selects a sound DNA. The page requires a
+  tap before audio can start (browser autoplay policy).
 - Git is configured **locally for this repository only** as `513gel` using
   `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
 - Browser-verified after these controls were added: local image load, Oni
@@ -70,11 +72,12 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   and Auto Source all worked without console errors. Sticky mobile preview was
   verified at 390 × 844 after a 650px page scroll (stage remained at top 50px).
   The first 20-item Chatter replacement parsed with Node and was
-  browser-checked. The current bassier replacement also parses with Node and
-  has 20 entries, but its post-edit browser audition could not run because the
-  connected browser reported no controllable tabs. Re-audition the new pack
-  manually after opening the live Sound Lab. MP4 export and AI-video handoff
-  are future additions; FFmpeg should remain optional and local.
+  browser-checked. The current distinct-engine replacement parses with Node,
+  has 20 entries, and validates that every tile references a real recipe, but
+  its post-edit browser audition could not run because the connected browser
+  reported no controllable tabs. Re-audition the new pack manually after
+  opening the live Sound Lab. MP4 export and AI-video handoff are future
+  additions; FFmpeg should remain optional and local.
 
 ## Run
 

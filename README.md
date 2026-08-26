@@ -49,9 +49,11 @@ pitch jumps, noise, and stutters. It has no samples or external dependencies;
 choose a sound code there before integrating that sound DNA into the main
 converter.
 
-The pack is deliberately divided into eight bassy low-formant thunks, six
-midrange crunch-mouths, and six heavier datamosh resolves so the choices do
-not all sit in the same high-pitched register.
+The pack is deliberately divided into eight low-data textures, six
+crunch-mouth variants, and six heavier datamosh resolves. Each tile uses a
+different synthesis path—hard-gated noise, constant-pitch formants, pulse
+trains, FM warble, clipped radio speech, or filtered static—rather than a
+shared falling-pitch impact.
 
 ## Run locally
 
