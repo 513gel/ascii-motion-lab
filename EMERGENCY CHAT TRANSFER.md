@@ -110,9 +110,12 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   with same-size block glyphs, makes deterministic-but-wrong character attempts
   during intermediate stages, and corrects every cell into the true final
   sampled glyph. It always builds once and holds the final frame.
-- Classic Tick has ten selectable one-shot voices: Classic Resolve, Heap Clack,
-  Cache Miss, Memory Leak, Relay Snap, Ceramic Bit, Needle Ping, Drive Seek,
-  Vending Tick, and Concrete Clack. They retain batch-tied timing while using
+- Classic Tick has fourteen selectable one-shot voices: Classic Resolve, Heap
+  Clack, Cache Miss, Memory Leak, Relay Snap, Ceramic Bit, Needle Ping, Drive
+  Seek, Vending Tick, Concrete Clack, Sub Bolt, Iron Tick, Piston Clack, and
+  Bunker Thud. Heap Clack remains unchanged; the final four are deliberately
+  lower/bassier variants with both a low-rate sampled click and a short
+  synthesized sub transient. They retain batch-tied timing while using
   different playback, tone, filter, and noise profiles. Spacebar toggles the
   Play/Pause/Replay transport unless the user is typing in a field.
 - The stage now defaults to **TEXT CANVAS**: a literal editable DOM `<pre>` in

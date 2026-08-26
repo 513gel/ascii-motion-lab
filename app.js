@@ -91,7 +91,11 @@
     needle:{rate:1.34, tone:"sine", frequency:2450, filter:4800, noise:0},
     drive:{rate:.98, tone:"sawtooth", frequency:430, filter:1500, noise:.025},
     vending:{rate:1.06, tone:"square", frequency:640, filter:2400, noise:.016},
-    concrete:{rate:.66, tone:"square", frequency:104, filter:630, noise:.045}
+    concrete:{rate:.66, tone:"square", frequency:104, filter:630, noise:.045},
+    subbolt:{rate:.48, tone:"sine", frequency:48, filter:240, noise:.028, sub:42},
+    iron:{rate:.54, tone:"square", frequency:58, filter:310, noise:.05, sub:49},
+    piston:{rate:.60, tone:"sawtooth", frequency:66, filter:380, noise:.065, sub:56},
+    bunker:{rate:.42, tone:"square", frequency:38, filter:190, noise:.08, sub:35}
   };
   function playClassicTick(step,addedGlyphs,kind="scatter"){
     if(!algoContext || ui.resolveSound.value!=="classic") return;
@@ -103,10 +107,12 @@
       gain.gain.setValueAtTime(0,start); gain.gain.linearRampToValueAtTime(level*.62,start+.002); gain.gain.exponentialRampToValueAtTime(.0001,start+profile[1]);
       source.connect(gain); gain.connect(algoMaster); source.start(start,0,Math.min(profile[1],classicTickBuffer.duration)); source.stop(start+profile[1]+.005); algoNodes.push(source,gain);
       if(kind!=="scatter"||voice!==tickVoices.classic) algoTone(voice.tone,voice.frequency+profile[2]*.18+(step%3)*16,start,Math.min(.045,profile[1]),level*.08,{filter:Math.max(400,voice.filter),q:4,release:.003});
+      if(voice.sub) algoTone("sine",voice.sub+(step%3)*2,start,Math.min(.075,profile[1]*1.15),level*.18,{filter:220,q:2,attack:.002,release:.012});
       if(voice.noise) algoNoise(start,Math.min(.035,profile[1]),level*voice.noise,{filter:voice.filter,q:5,seed:step*31+addedGlyphs,release:.002});
       return;
     }
     algoTone(voice.tone,voice.frequency+profile[2]*.2+(step%4)*70,start,.018,level*.15,{filter:voice.filter,q:8,release:.002});
+    if(voice.sub) algoTone("sine",voice.sub+(step%3)*2,start,.065,level*.2,{filter:220,q:2,attack:.002,release:.012});
   }
   function tickBuild(addedGlyphs,active,info={}){
     if(!active || !isAnimated() || ui.resolveSound.value!=="classic" || addedGlyphs<=0) return;
