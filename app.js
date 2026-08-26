@@ -5,13 +5,13 @@
   const ui = {
     mode:$("mode"), size:$("cell-size"), fineGlyphSize:$("fine-glyph-size"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textLayout:$("text-layout"), textScale:$("text-scale"), textBlend:$("text-blend"), noTextRepeat:$("no-text-repeat"), lockSentence:$("lock-sentence"), lockedSentence:$("locked-sentence"), boldWords:$("bold-words"), findText:$("find-text"), replaceText:$("replace-text"),
     brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"),
-    colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"),
+    colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"), hardBlackWhite:$("hard-black-white"),
     effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), tickVoice:$("tick-voice"), previewEngine:$("preview-engine"), prompt:$("prompt"),
     pattern:$("pattern"), patternTarget:$("pattern-target"), patternTile:$("pattern-tile"), borderStyle:$("border-style"), borderMotion:$("border-motion"), divider:$("divider"), safeArea:$("safe-area"), posterMode:$("poster-mode"), posterTitle:$("poster-title"), posterFooter:$("poster-footer"), asciiColumns:$("ascii-columns"), asciiBorder:$("ascii-border"), muteFirstTick:$("mute-first-tick"), muteFinalTick:$("mute-final-tick")
   };
   // Do not let browser form restoration boot the tool into someone's previous
   // glitch carnival. New sessions start as a clean, direct baseline.
-  ui.glitch.value="0"; ui.scanlines.value="0"; ui.effect.value="none"; ui.effectPower.value="0"; ui.contrast.value="100"; ui.direction.value="left"; ui.noTextRepeat.checked=false; ui.fineGlyphSize.checked=false;
+  ui.glitch.value="0"; ui.scanlines.value="0"; ui.effect.value="none"; ui.effectPower.value="0"; ui.contrast.value="100"; ui.direction.value="left"; ui.noTextRepeat.checked=false; ui.fineGlyphSize.checked=false; ui.hardBlackWhite.checked=false;
   const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1, lastVisibleGlyphs:0, generationTicks:0, firstTick:true, finalTick:false, textMode:true, manualText:"", viewport:{x:0,y:0,zoom:1} };
   const outputNames={size:"cell-size-out",duration:"duration-out",textScale:"text-scale-out",textBlend:"text-blend-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",outputScale:"output-scale-out",audioLevel:"audio-level-out",safeArea:"safe-area-out"};
   const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:key==="outputScale"?`${ui[key].value}%`:ui[key].value);
@@ -36,11 +36,12 @@
   }
   function restoreHistory(snapshot,label){
     history.restoring=true; Object.entries(snapshot.controls).forEach(([id,value])=>{ const control=$(id); if(control) control.type==="checkbox"?control.checked=value:control.value=value; });
-    state.viewport={...snapshot.viewport}; applyViewport(); $("text-count").textContent=`${ui.customText.value.length.toLocaleString()} CHARACTERS`; syncGlyphPrecision(); state.lastRender=0; state.playing=false; state.completed=false; state.pausedElapsed=0; stopResolveAudio(); history.restoring=false; transport.textContent=`${label} APPLIED`;
+    state.viewport={...snapshot.viewport}; applyViewport(); $("text-count").textContent=`${ui.customText.value.length.toLocaleString()} CHARACTERS`; syncGlyphPrecision(); syncHardBlackWhite(); state.lastRender=0; state.playing=false; state.completed=false; state.pausedElapsed=0; stopResolveAudio(); history.restoring=false; transport.textContent=`${label} APPLIED`;
   }
   function undo(){ if(!history.past.length) return; history.future.push(history.current); history.current=history.past.pop(); restoreHistory(history.current,"UNDO"); updateHistoryButtons(); }
   function redo(){ if(!history.future.length) return; history.past.push(history.current); history.current=history.future.pop(); restoreHistory(history.current,"REDO"); updateHistoryButtons(); }
   function fitViewport(record=true){ state.viewport={x:0,y:0,zoom:1}; applyViewport(); if(record) commitHistory(); }
+  function zoomViewport(factor){ state.viewport.zoom=Math.max(.25,Math.min(8,state.viewport.zoom*factor)); applyViewport(); commitHistory(); transport.textContent=`VIEW ZOOM — ${Math.round(state.viewport.zoom*100)}%`; }
   function setControlPage(page){
     document.querySelectorAll(".panel[data-page]").forEach(panel=>panel.hidden=panel.dataset.page!==page);
     document.querySelectorAll("[data-control-page]").forEach(button=>button.classList.toggle("is-active",button.dataset.controlPage===page));
@@ -58,6 +59,9 @@
   function algoNoise(start,duration,level,opts={}){ const buffer=algoContext.createBuffer(1,Math.max(1,Math.ceil(algoContext.sampleRate*duration)),algoContext.sampleRate), data=buffer.getChannelData(0); let seed=opts.seed||17; for(let i=0;i<data.length;i++){seed=(seed*1664525+1013904223)>>>0;data[i]=(seed/4294967296)*2-1;} const src=algoContext.createBufferSource(), filter=algoContext.createBiquadFilter(); src.buffer=buffer; filter.type=opts.type||"bandpass"; filter.frequency.value=opts.filter||1600; filter.Q.value=opts.q||3; src.connect(filter); algoGate(filter,start,duration,level,opts.attack||.002,opts.release||.006); src.start(start);src.stop(start+duration+.02);algoNodes.push(src,filter); }
   function algorithmicCycle(){
     if(!state.playing || !isAnimated() || ui.resolveSound.value!=="algorithmic") return;
+    const timeline=state.pausedElapsed+(performance.now()-state.started)/1000;
+    if(timeline<buildLeadSeconds){ algoTimer=window.setTimeout(algorithmicCycle,Math.max(20,(buildLeadSeconds-timeline)*1000)); return; }
+    if(timeline>=buildLeadSeconds+Number(ui.duration.value)) return;
     stopAlgorithmicAudio(); const seconds=Math.max(.8,Number(ui.duration.value)), start=algoContext.currentTime+.03, scale=Math.max(.5,seconds/3.5), level=Number(ui.audioLevel.value)/100; algoMaster.gain.setValueAtTime(level,start);
     // Memory Leak: a low dirty bed that never falls in pitch, avoiding the old ball-bounce tail.
     [0,.14,.28,.42].forEach((p,i)=>{ const at=start+p*scale; algoTone("sawtooth",[72,75,78,82][i],at,.09*scale,.095,{filter:420,q:3,release:.006}); algoNoise(at,.06*scale,.032,{filter:520+i*90,q:3,seed:91+i,release:.004}); });
@@ -138,15 +142,21 @@
     else if(sourceRatio<targetRatio){ sh=sourceW/targetRatio; sy=(sourceH-sh)/2; }
     target.drawImage(source,sx,sy,sw,sh,0,0,targetW,targetH);
   }
+  const buildLeadSeconds=2, buildHoldSeconds=5;
+  const clipDuration=()=>isAnimated()?buildLeadSeconds+Number(ui.duration.value)+buildHoldSeconds:Number(ui.duration.value);
+  const buildTimeFromTimeline=elapsed=>Math.max(0,Math.min(Number(ui.duration.value),elapsed-buildLeadSeconds));
   function finishAnimation(){
     if(state.completed) return; state.playing=false; state.completed=true; $("play").textContent="REPLAY";
-    state.pausedElapsed=Number(ui.duration.value);
+    state.pausedElapsed=clipDuration();
     if(state.sourceKind==="video") state.media.pause(); stopResolveAudio(); transport.textContent="BUILD COMPLETE — FINAL FRAME HELD";
   }
   function getTime(){
-    const seconds=Number(ui.duration.value); if(!state.playing) return state.completed?seconds:state.pausedElapsed;
-    const elapsed=state.pausedElapsed+(performance.now()-state.started)/1000; if(isAnimated()&&elapsed>=seconds){ finishAnimation(); return seconds; }
-    return elapsed;
+    const seconds=Number(ui.duration.value); if(!isAnimated()) return 0;
+    const elapsed=state.playing?state.pausedElapsed+(performance.now()-state.started)/1000:state.pausedElapsed;
+    if(state.playing&&elapsed>=clipDuration()){ finishAnimation(); return seconds; }
+    if(state.playing&&elapsed<buildLeadSeconds) transport.textContent="START FRAME — 2 SECOND LEAD-IN";
+    else if(state.playing&&elapsed>=buildLeadSeconds+seconds) transport.textContent="FINAL FRAME — 5 SECOND HOLD";
+    return state.completed?seconds:buildTimeFromTimeline(elapsed);
   }
   const characterLibraries={
     dense:" .,:;irsXA253hMHGS#9B&@",
@@ -171,11 +181,13 @@
   const paletteFields=[ui.foreground,ui.palette2,ui.palette3,ui.palette4,ui.palette5];
   function activePalette(){ return paletteFields.map(field=>field.value).slice(0,Number(ui.paletteSize.value)); }
   function glyphColor(bright,r,g,b){
+    if(ui.hardBlackWhite.checked) return "#ffffff";
     if(ui.colorMode.value==="source") return `rgb(${r},${g},${b})`;
     if(ui.colorMode.value==="palette"){ const colors=activePalette(); return colors[Math.min(colors.length-1,Math.floor((1-Math.max(0,Math.min(1,bright)))*colors.length))]; }
     return ui.foreground.value;
   }
   function fillBackground(w,h){
+    if(ui.hardBlackWhite.checked){ ctx.fillStyle="#000000"; ctx.fillRect(0,0,w,h); return; }
     const first=ui.background.value, second=ui.background2.value; let fill=first;
     if(ui.backgroundStyle.value==="vertical"){ fill=ctx.createLinearGradient(0,0,0,h); fill.addColorStop(0,first); fill.addColorStop(1,second); }
     if(ui.backgroundStyle.value==="radial"){ fill=ctx.createRadialGradient(w*.5,h*.42,0,w*.5,h*.42,Math.max(w,h)*.72); fill.addColorStop(0,second); fill.addColorStop(1,first); }
@@ -249,7 +261,10 @@
     if(mode==="terminal-rain") return p>=Math.min(1,y/state.analyserH*.72+seed(x,19)*.3);
     if(["edge","edge-skeleton"].includes(mode)) return p>=Math.min(1,random*.35+(1-b)*.1);
     if(mode==="word-reveal") return p>=seed(Math.floor(x/7),Math.floor(y/2));
+    if(mode==="text-typewriter") return true;
     if(mode==="compression-decode"){const block=Math.max(1,8-Math.floor(p*7));return p>=seed(Math.floor(x/block),Math.floor(y/block));}
+    if(mode==="radial-assembly") return p>=Math.min(1,Math.hypot(x-state.analyserW/2,y-state.analyserH/2)/(Math.hypot(state.analyserW,state.analyserH)/2));
+    if(mode==="diagonal-wipe") return p>=Math.min(1,(x+y)/(state.analyserW+state.analyserH));
     return p>=random;
   }
   function effectiveGlyphSize(time){
@@ -299,6 +314,7 @@
   function renderTextCanvas(){
     canvasWrap.classList.add("is-live-text","is-manual-text");
     liveText.contentEditable="true";
+    liveText.style.color=ui.hardBlackWhite.checked?"#ffffff":"";
     liveText.setAttribute("aria-label","Editable monospaced text canvas");
     empty.hidden=true;
   }
@@ -319,7 +335,7 @@
     const displayScale=Math.min(1,Math.max(.01,(drop.clientWidth-4)/w),Math.max(.01,(drop.clientHeight-4)/h));
     const fontSize=Math.max(4,cellH*displayScale), glyphAdvance=ctx.measureText("M").width*displayScale, letterSpacing=Math.max(-fontSize*.32,cell*displayScale-glyphAdvance);
     canvasWrap.style.width=`${Math.max(1,w*displayScale)}px`; canvasWrap.style.height=`${Math.max(1,h*displayScale)}px`;
-    liveText.style.fontSize=`${fontSize}px`; liveText.style.lineHeight=`${Math.max(4,cellH*displayScale)}px`; liveText.style.letterSpacing=`${letterSpacing}px`; liveText.textContent=lines.join("\n");
+    liveText.style.fontSize=`${fontSize}px`; liveText.style.lineHeight=`${Math.max(4,cellH*displayScale)}px`; liveText.style.letterSpacing=`${letterSpacing}px`; liveText.style.color=ui.hardBlackWhite.checked?"#ffffff":""; liveText.textContent=lines.join("\n");
   }
   function draftCursor(time){
     if(ui.mode.value!=="iterative-draft") return null; const p=Math.max(0,Math.min(1,time/Number(ui.duration.value))); if(p<.17||p>.94||!state.analyserW||!state.analyserH) return null;
@@ -327,6 +343,7 @@
     return {x,y,visible:step%2===0};
   }
   function drawDraftCursor(time,cell,cellH){ const cursor=draftCursor(time); if(!cursor||!cursor.visible) return; ctx.save();ctx.globalAlpha=.9;ctx.fillStyle=ui.foreground.value;ctx.fillRect(cursor.x*cell,cursor.y*cellH+Math.max(1,cellH*.86),Math.max(2,cell*.72),Math.max(1,cellH*.08));ctx.restore(); }
+  const fadeTypewriterColor=(age,fade)=>{ const mix=Math.max(0,Math.min(1,age/fade)), red=[239,64,53], white=[255,255,255], channel=index=>Math.round(red[index]+(white[index]-red[index])*mix); return `rgb(${channel(0)},${channel(1)},${channel(2)})`; };
   function render(now=performance.now()){
     requestAnimationFrame(render);
     if(state.textMode) return;
@@ -340,16 +357,20 @@
     $("fps-readout").textContent=`${ui.fps.value} FPS`;
     fillBackground(w,h); ctx.font=`${Math.max(1,cellH)}px monospace`; ctx.textBaseline="top";
     const mode=ui.mode.value, data=frame.data, glitch=Number(ui.glitch.value)/100;
+    const isTextTypewriter=mode==="text-typewriter"&&ui.glyphSource.value==="text"&&ui.textLayout.value==="flow";
+    let typewriterTotal=0; if(isTextTypewriter){ for(let i=0;i<data.length;i+=4) if(adjusted(data[i],data[i+1],data[i+2])>=.07) typewriterTotal++; }
+    const typewriterTarget=Math.floor(Math.max(0,Math.min(1,t/Number(ui.duration.value)))*typewriterTotal), typewriterFade=Math.max(6,Math.ceil(typewriterTotal*.07));
     let visibleGlyphs=0, darkAdded=0, brightAdded=0, textFlowIndex=0; const liveLines=ui.previewEngine.value==="text"?[]:null;
     for(let y=0;y<state.analyserH;y++) { let liveLine=""; for(let x=0;x<state.analyserW;x++){
       const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
       if(ui.edges.checked || ["edge","edge-skeleton"].includes(mode)) { const right=x+1<state.analyserW?i+4:i, down=y+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
-      let shown=mode==="direct" || mode==="glyph-build" || mode==="coarse-mosaic" || mode==="iterative-draft" || revealFor(x,y,v,t,mode); if(!shown){if(liveLines)liveLine+=" ";continue;}
       const useTextFlow=ui.glyphSource.value==="text"&&ui.textLayout.value==="flow"&&v>=.07;
-      let char=renderGlyph(v,x,y,t,mode,useTextFlow?textFlowIndex:null); if(useTextFlow)textFlowIndex++; if(mode==="terminal" && ui.glyphSource.value==="ramp" && t/Number(ui.duration.value)<seed(x,y)*.9) char=("01/\\|[]{}<>+-")[Math.floor(seed(y,x+12)*12)];
+      const flowIndex=useTextFlow?textFlowIndex:null; if(isTextTypewriter&&useTextFlow)textFlowIndex++;
+      const shown=isTextTypewriter?(useTextFlow&&flowIndex<typewriterTarget):(mode==="direct" || mode==="glyph-build" || mode==="coarse-mosaic" || mode==="iterative-draft" || revealFor(x,y,v,t,mode)); if(!shown){if(liveLines)liveLine+=" ";continue;}
+      let char=renderGlyph(v,x,y,t,mode,flowIndex); if(!isTextTypewriter&&useTextFlow)textFlowIndex++; if(mode==="terminal" && ui.glyphSource.value==="ramp" && t/Number(ui.duration.value)<seed(x,y)*.9) char=("01/\\|[]{}<>+-")[Math.floor(seed(y,x+12)*12)];
       const jitter=glitch>0&&seed(x,Math.floor(t*ui.fps.value))<glitch*.14 ? Math.round((seed(y,x)*2-1)*cell*2) : 0;
       if(liveLines)liveLine+=char; if(char!==" "){ visibleGlyphs++; if(v<.28)darkAdded++; if(v>.72)brightAdded++; }
-      ctx.globalAlpha=ui.glyphSource.value==="text"?Math.max(.08,Math.pow(v,.72)):1; ctx.fillStyle=glyphColor(v,r,g,b); ctx.fillText(char,x*cell+jitter,y*cellH);
+      ctx.globalAlpha=1; ctx.fillStyle=isTextTypewriter&&flowIndex!==null&&t<Number(ui.duration.value)-.001?fadeTypewriterColor(typewriterTarget-flowIndex,typewriterFade):glyphColor(v,r,g,b); ctx.fillText(char,x*cell+jitter,y*cellH);
     } if(liveLines)liveLines.push(liveLine); }
     const cursor=draftCursor(t); if(liveLines&&cursor&&cursor.visible&&liveLines[cursor.y]){const chars=liveLines[cursor.y].split("");chars[cursor.x]="▌";liveLines[cursor.y]=chars.join("");}
     if(liveLines)updateLiveText(liveLines,w,h,cell,cellH); else updateLiveText([],w,h,cell,cellH);
@@ -382,6 +403,13 @@
     preset.colors?.forEach((color,index)=>paletteFields[index].value=color);
     transport.textContent=name==="source"?"AUTO SOURCE COLOR ENABLED":"PALETTE LOADED"; commitHistory();
   }
+  function syncHardBlackWhite(announce=false){
+    if(!ui.hardBlackWhite.checked){ liveText.style.color=""; return; }
+    ui.colorMode.value="mono"; ui.palettePreset.value="custom"; ui.paletteSize.value="2"; ui.foreground.value="#ffffff";
+    ui.background.value="#000000"; ui.background2.value="#000000"; ui.backgroundStyle.value="solid";
+    ui.effect.value="none"; ui.effectPower.value="0"; ui.scanlines.value="0"; ui.pattern.value="none"; liveText.style.color="#ffffff"; state.lastRender=0;
+    if(announce) transport.textContent="HARD BLACK / WHITE — PURE #000 + #FFF";
+  }
   function markPaletteCustom(){ if(ui.palettePreset.value!=="source") ui.palettePreset.value="custom"; }
   function applyPrompt(){ const p=ui.prompt.value.toLowerCase(); const set=(key,val)=>{ ui[key].value=val; };
     if(/glyph.?collapse|large.?glyph|glyph.?build|coarse.?to.?fine/.test(p))set("mode","glyph-build"); else if(/pixel.?sort|sort sweep/.test(p))set("mode","pixel-sort"); else if(/scan(line)?|develop/.test(p))set("mode","scanline"); else if(/edge/.test(p))set("mode","edge"); else if(/terminal|decode|resolve|build/.test(p))set("mode",/terminal/.test(p)?"terminal":"decode");
@@ -411,22 +439,26 @@
     const [w,h]=outputDimensions(), padding=Math.round(Math.min(w,h)*.055), maxLine=Math.max(1,w-padding*2), maxHeight=Math.max(1,h-padding*2);
     const fontSize=Math.max(4,Math.min(maxLine/(longest*.6),maxHeight/(Math.max(1,lines.length)*1.28)));
     if(out.width!==w||out.height!==h){out.width=w;out.height=h;$("dimension-readout").textContent=`${w} × ${h}`;}
-    fillBackground(w,h); ctx.save();ctx.fillStyle=ui.foreground.value;ctx.font=`${fontSize}px "Courier New", Courier, monospace`;ctx.textBaseline="top";ctx.fontKerning="none";lines.forEach((line,index)=>ctx.fillText(line,padding,padding+index*fontSize*1.28));ctx.restore();
+    fillBackground(w,h); ctx.save();ctx.fillStyle=ui.hardBlackWhite.checked?"#ffffff":ui.foreground.value;ctx.font=`${fontSize}px "Courier New", Courier, monospace`;ctx.textBaseline="top";ctx.fontKerning="none";lines.forEach((line,index)=>ctx.fillText(line,padding,padding+index*fontSize*1.28));ctx.restore();
   }
   function snapshot(){ if(state.textMode) drawTextCanvasFrame(); const a=document.createElement("a");a.download="ascii-motion-frame.png";a.href=out.toDataURL("image/png");a.click(); }
   function currentAsciiText(){
     if(state.textMode) return readTextCanvas();
     if(!state.imageReady) return "";
-    const t=state.completed?Number(ui.duration.value):state.playing?getTime():state.pausedElapsed, frame=sourceFrame(t); if(!frame) return "";
+    const t=state.completed?Number(ui.duration.value):state.playing?getTime():buildTimeFromTimeline(state.pausedElapsed), frame=sourceFrame(t); if(!frame) return "";
     const data=frame.data, mode=ui.mode.value, lines=[], requested=ui.asciiColumns.value==="source"?state.analyserW:Number(ui.asciiColumns.value), exportW=Math.max(1,requested), exportH=Math.max(1,Math.round(state.analyserH*exportW/state.analyserW)); let textFlowIndex=0;
+    const isTextTypewriter=mode==="text-typewriter"&&ui.glyphSource.value==="text"&&ui.textLayout.value==="flow"; let typewriterTotal=0;
+    if(isTextTypewriter){for(let i=0;i<data.length;i+=4)if(adjusted(data[i],data[i+1],data[i+2])>=.07)typewriterTotal++;}
+    const typewriterTarget=Math.floor(Math.max(0,Math.min(1,t/Number(ui.duration.value)))*typewriterTotal);
     for(let y=0;y<exportH;y++){
       let line="";
       for(let x=0;x<exportW;x++){
         const sx=Math.min(state.analyserW-1,Math.floor(x/exportW*state.analyserW)), sy=Math.min(state.analyserH-1,Math.floor(y/exportH*state.analyserH)), i=(sy*state.analyserW+sx)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
         if(ui.edges.checked || ["edge","edge-skeleton"].includes(mode)) { const right=sx+1<state.analyserW?i+4:i, down=sy+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
-        const shown=mode==="direct" || ["glyph-build","coarse-mosaic","iterative-draft"].includes(mode) || revealFor(sx,sy,v,t,mode); if(!shown){ line+=" "; continue; }
         const useTextFlow=ui.glyphSource.value==="text"&&ui.textLayout.value==="flow"&&v>=.07;
-        line+=mode==="terminal"&&ui.glyphSource.value==="ramp"&&t/Number(ui.duration.value)<seed(sx,sy)*.9?("01/\\|[]{}<>+-")[Math.floor(seed(sy,sx+12)*12)]:renderGlyph(v,sx,sy,t,mode,useTextFlow?textFlowIndex:null); if(useTextFlow)textFlowIndex++;
+        const flowIndex=useTextFlow?textFlowIndex:null; if(isTextTypewriter&&useTextFlow)textFlowIndex++;
+        const shown=isTextTypewriter?(useTextFlow&&flowIndex<typewriterTarget):(mode==="direct" || ["glyph-build","coarse-mosaic","iterative-draft"].includes(mode) || revealFor(sx,sy,v,t,mode)); if(!shown){ line+=" "; continue; }
+        line+=mode==="terminal"&&ui.glyphSource.value==="ramp"&&t/Number(ui.duration.value)<seed(sx,sy)*.9?("01/\\|[]{}<>+-")[Math.floor(seed(sy,sx+12)*12)]:renderGlyph(v,sx,sy,t,mode,flowIndex); if(!isTextTypewriter&&useTextFlow)textFlowIndex++;
       }
       lines.push(line.replace(/\s+$/,""));
     }
@@ -443,11 +475,13 @@
   async function record(){ if(!state.imageReady||state.recording)return; if(!isAnimated()){ transport.textContent="CHOOSE A BUILD STYLE BEFORE EXPORTING VIDEO"; return; } if(!window.MediaRecorder){transport.textContent="MEDIARECORDER NOT AVAILABLE";return;} state.recording=true; state.playing=true; state.completed=false; $("record").classList.add("recording"); $("record").textContent="● RECORDING…"; restart();
     const stream=out.captureStream(Number(ui.fps.value)); let audioStream=null; if(ui.resolveSound.value!=="none"){ await algorithmicEngine(); audioStream=algoCapture?.stream; } audioStream?.getAudioTracks().forEach(track=>stream.addTrack(track)); const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"; const rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8_000_000}); const chunks=[];
     rec.ondataavailable=e=>e.data.size&&chunks.push(e.data); rec.onstop=()=>{ const blob=new Blob(chunks,{type});const a=document.createElement("a");a.download="ascii-motion-build.webm";a.href=URL.createObjectURL(blob);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);state.recording=false;$("record").classList.remove("recording");$("record").textContent="● EXPORT BUILD (WEBM)";transport.textContent="WEBM EXPORTED"; };
-    rec.start(); setTimeout(()=>rec.stop(),Number(ui.duration.value)*1000);
+    rec.start(); setTimeout(()=>rec.stop(),clipDuration()*1000);
   }
   fileInput.onchange=e=>{ load(e.target.files[0]); e.target.value=""; };
   $("choose-file").onclick=()=>fileInput.click();
+  $("zoom-out").onclick=()=>zoomViewport(1/1.18);
   $("fit-view").onclick=()=>{ fitViewport(); transport.textContent="VIEW FIT"; };
+  $("zoom-in").onclick=()=>zoomViewport(1.18);
   $("undo").onclick=undo; $("redo").onclick=redo;
   ["dragenter","dragover"].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.add("dragging");})); ["dragleave","drop"].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.remove("dragging");})); drop.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
   let panStart=null;
@@ -472,9 +506,10 @@
   ui.charset.oninput=()=>{ui.charsetPreset.value="custom";};
   ui.palettePreset.onchange=()=>applyPalettePreset(ui.palettePreset.value);
   [ui.colorMode,ui.paletteSize,ui.backgroundStyle,ui.foreground,ui.palette2,ui.palette3,ui.palette4,ui.palette5,ui.background,ui.background2].forEach(control=>control.addEventListener("input",markPaletteCustom));
+  ui.hardBlackWhite.onchange=()=>{ syncHardBlackWhite(true); updateReadouts(); commitHistory(); };
   [ui.size,ui.aspectRatio,ui.outputResolution,ui.customResolution,ui.outputScale].forEach(control=>control.addEventListener("input",()=>{ state.lastRender=0; }));
   ui.fineGlyphSize.onchange=()=>{ syncGlyphPrecision(true); commitHistory(); };
-  ui.mode.onchange=()=>{ state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; if(ui.mode.value==="direct"){ state.playing=false; stopResolveAudio(); $("play").textContent="PLAY"; transport.textContent="STATIC PREVIEW"; } else transport.textContent="STYLE SET — PRESS PLAY"; };
+  ui.mode.onchange=()=>{ state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; if(ui.mode.value==="text-typewriter"&&ui.customText.value.trim()){ui.glyphSource.value="text";ui.textLayout.value="flow";ui.previewEngine.value="canvas";leaveTextCanvas();} if(ui.mode.value==="direct"){ state.playing=false; stopResolveAudio(); $("play").textContent="PLAY"; transport.textContent="STATIC PREVIEW"; } else transport.textContent=ui.mode.value==="text-typewriter"?"TEXT TYPEWRITER READY — PRESS PLAY":"STYLE SET — PRESS PLAY"; };
   $("play").onclick=()=>{
     if(!isAnimated()){ state.playing=false; state.completed=false; state.pausedElapsed=0; $("play").textContent="PLAY"; stopResolveAudio(); transport.textContent="STATIC PREVIEW — CHOOSE A BUILD STYLE TO ANIMATE"; return; }
     if(state.completed){ state.completed=false; state.pausedElapsed=0; state.started=performance.now(); state.playing=true; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; }

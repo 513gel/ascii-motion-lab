@@ -67,7 +67,8 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   zoom (0.25–8×), and `FIT VIEW`. The viewport plus all controls use an 80-step
   Undo/Redo history with buttons, Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, and
   Alt+Left/Alt+Right outside editable fields. Loading a new source resets its
-  history baseline and viewport.
+  history baseline and viewport. Stage toolbar **− / +** buttons now expose
+  that whole-viewport zoom explicitly for enlarged TRUE TEXT/Canvas framing.
 - Text Weave was renamed **Text Foundation**. It retains raw pasted line breaks,
   supports Continuous/Preserve Lines/Reverse layouts, displays a character
   count, imports `.txt`, `.md`, or `.csv` with the local File API, and uses
@@ -91,7 +92,9 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
 - The build selector now includes Line Printer, Glyph Scatter, Threshold Flood,
   Coarse Mosaic, Horizontal Sync, Vertical Terminal Rain, Edge Skeleton, Word
   Reveal, Compression Decode, and Corruption Repair, while retaining the older
-  direct, pixel-sort, scanline, terminal, and glyph-collapse tools.
+  direct, pixel-sort, scanline, terminal, and glyph-collapse tools. It also
+  includes **Text Typewriter / Red → White** for imported Text Foundation
+  content, plus working Radial Assembly and Diagonal Wipe reveal paths.
 - Pattern controls provide original procedural hatch, wave, cross-stitch, maze,
   checker, and custom-tile glyph patterns for background, text fill, or both.
   The app also includes original single/double/corner/wave/terminal borders,
@@ -158,8 +161,10 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   Iterative Draft markup during the immediate post-push cache check.
 - Animated presets are now build-and-hold: once the duration completes, the
   renderer freezes on the fully resolved final frame, stops resolve audio,
-  pauses any video source, and changes Play to Replay. Restart resets the
-  completed state without losing settings.
+  pauses any video source, and changes Play to Replay. Each animated preview
+  and WebM adds a fixed **2-second start-frame lead-in** before the selected
+  build duration and a **5-second final-frame hold** after it. Restart resets
+  the completed state without losing settings.
 - Output is now the full delivery panel: aspect ratio, resolution/long edge,
   custom long edge, output multiplier, build length (0.5–20s), and actual
   renderer/export FPS (6–60). The render loop is frame-gated, so low FPS is
@@ -175,7 +180,10 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   brightness palettes, and real RGB source-color sampling. Palette presets:
   Monochrome, Oni Blood, Cobalt Signal, Phosphor Green, Amber Terminal, Game
   Boy, Thermal, Auto Source, and Custom. The background supports solid,
-  vertical-gradient, and radial-glow fills with two editable colors.
+  vertical-gradient, and radial-glow fills with two editable colors. **Hard
+  Black / White** forces `#000000` background and `#ffffff` glyphs, disables
+  alpha haze, scanlines/effects, and background patterns. Canvas text otherwise
+  now draws at full opacity too, matching the crisp TRUE TEXT stage.
 - Character libraries now provide dense ASCII, English, binary/terminal,
   blocks, Japanese katakana, symbols/runes, and a custom ramp. Text Weave can
   build the visible source from pasted lyrics or another text block; Text Repeat

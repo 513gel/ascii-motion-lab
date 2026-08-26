@@ -27,7 +27,9 @@
         <div id="drop-zone" class="drop-zone" tabindex="0" role="application" aria-label="ASCII viewport. Drag to pan and use the mouse wheel to zoom.">
           <div class="stage-toolbar">
             <button id="choose-file" class="primary">ATTACH SOURCE</button>
+            <button id="zoom-out" class="ghost" title="Zoom viewport out">−</button>
             <button id="fit-view" class="ghost">FIT VIEW</button>
+            <button id="zoom-in" class="ghost" title="Zoom viewport in">+</button>
             <select id="preview-engine" aria-label="Preview renderer"><option value="manual" selected>TEXT CANVAS</option><option value="text">TRUE TEXT</option><option value="canvas">CANVAS</option></select>
           </div>
           <div id="canvas-wrap" class="canvas-wrap"><canvas id="output" width="960" height="540"></canvas><pre id="live-text" class="live-text" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true" aria-label="Editable ASCII text canvas"></pre></div>
@@ -125,6 +127,7 @@
             <label>BACKGROUND A <input id="background" type="color" value="#050505" /></label>
             <label>BACKGROUND B <input id="background-2" type="color" value="#111111" /></label>
           </div>
+          <label><input id="hard-black-white" type="checkbox" /> HARD BLACK / WHITE <span class="field-note">PURE #000 + #FFF, NO HAZE</span></label>
           <p class="hint"><strong>Auto from source</strong> takes the actual colors from your image/video. In Palette mode, color 5 is the shadow and color 1 is the highlight.</p>
         </section>
 
@@ -268,8 +271,11 @@
               <option value="terminal-rain">VERTICAL TERMINAL RAIN</option>
               <option value="edge-skeleton">EDGE SKELETON</option>
               <option value="word-reveal">WORD REVEAL</option>
+              <option value="text-typewriter">TEXT TYPEWRITER / RED → WHITE</option>
               <option value="compression-decode">COMPRESSION DECODE</option>
               <option value="corruption-repair">CORRUPTION REPAIR</option>
+              <option value="radial-assembly">RADIAL ASSEMBLY / CENTER OUT</option>
+              <option value="diagonal-wipe">DIAGONAL WIPE / TOP LEFT</option>
               <option value="iterative-draft">ITERATIVE DRAFT / BLOCK → DETAIL</option>
               <option value="glyph-build">GLYPH COLLAPSE / LARGE → SET SIZE</option>
               <option value="pixel-sort">PIXEL-SORT REVEAL</option>
@@ -302,6 +308,7 @@
               <input id="output-scale" type="range" min="25" max="200" step="5" value="100" />
             </label>
           </div>
+          <p class="hint compact-hint">Animated exports add a 2s start-frame lead-in and a 5s final-frame hold around the chosen build length.</p>
           <div class="audio-row">
             <label>SOUND
               <select id="resolve-sound">
