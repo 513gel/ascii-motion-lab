@@ -1,12 +1,12 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const out = $("output"), ctx = out.getContext("2d"), sample = document.createElement("canvas"), sctx = sample.getContext("2d", { willReadFrequently:true });
-  const fileInput=$("file-input"), textFileInput=$("text-file-input"), drop=$("drop-zone"), canvasWrap=$("canvas-wrap"), empty=$("empty-state"), status=$("source-status"), transport=$("transport-status");
+  const fileInput=$("file-input"), textFileInput=$("text-file-input"), drop=$("drop-zone"), canvasWrap=$("canvas-wrap"), liveText=$("live-text"), empty=$("empty-state"), status=$("source-status"), transport=$("transport-status");
   const ui = {
     mode:$("mode"), size:$("cell-size"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textLayout:$("text-layout"), textScale:$("text-scale"), textBlend:$("text-blend"), lockSentence:$("lock-sentence"), lockedSentence:$("locked-sentence"), boldWords:$("bold-words"), findText:$("find-text"), replaceText:$("replace-text"),
     brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"),
     colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"),
-    effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), tickVoice:$("tick-voice"), prompt:$("prompt"),
+    effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), tickVoice:$("tick-voice"), previewEngine:$("preview-engine"), prompt:$("prompt"),
     pattern:$("pattern"), patternTarget:$("pattern-target"), patternTile:$("pattern-tile"), borderStyle:$("border-style"), borderMotion:$("border-motion"), divider:$("divider"), safeArea:$("safe-area"), posterMode:$("poster-mode"), posterTitle:$("poster-title"), posterFooter:$("poster-footer"), asciiColumns:$("ascii-columns"), asciiBorder:$("ascii-border"), muteFirstTick:$("mute-first-tick"), muteFinalTick:$("mute-final-tick")
   };
   const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1, lastVisibleGlyphs:0, generationTicks:0, firstTick:true, finalTick:false, viewport:{x:0,y:0,zoom:1} };
@@ -202,8 +202,7 @@
     if(mode==="iterative-draft" && progress<.94){
       // A deliberately imperfect drafting pass: broad marks first, then changing
       // hypotheses that settle into the sampled glyph as detail arrives.
-      const draft=" .,:;/-=+*xX#@";
-      const stage=Math.min(4,Math.floor(progress*5)), confidence=Math.max(0,Math.min(1,(progress-.18)/.76));
+      const stage=Math.min(4,Math.floor(progress*5)), draft=[" ░▒▓█"," .,:;/-=+*#@"," .,:;irsXA253hMHGS#9B&@"," .,:;irsXA253hMHGS#9B&@"," .,:;irsXA253hMHGS#9B&@"][stage], confidence=Math.max(0,Math.min(1,(progress-.18)/.76));
       const revision=seed(x+stage*43,y+stage*97);
       if(revision>confidence) char=draft[Math.min(draft.length-1,Math.max(0,Math.floor((bright+(seed(x+stage,y-stage)-.5)*.52)*(draft.length-1))))];
     }
@@ -226,7 +225,6 @@
   function effectiveGlyphSize(time){
     const target=Number(ui.size.value);
     if(ui.mode.value==="coarse-mosaic"){ const p=Math.max(0,Math.min(1,time/Number(ui.duration.value))), stage=Math.max(0,3-Math.floor(p*4)); return Math.max(target,Math.min(180,target*2**stage)); }
-    if(ui.mode.value==="iterative-draft"){ const p=Math.max(0,Math.min(1,time/Number(ui.duration.value))); const stages=[144,88,48,Math.max(target*2,target+2),target]; return Math.max(target,stages[Math.min(stages.length-1,Math.floor(p*stages.length))]); }
     if(ui.mode.value!=="glyph-build") return target;
     const p=Math.max(0,Math.min(1,time/Number(ui.duration.value))), smooth=p*p*(3-2*p);
     return Math.max(target,Math.round(180+(target-180)*smooth));
@@ -267,6 +265,14 @@
     ctx.restore();
   }
   function drawPoster(w,h){ if(!ui.posterMode.checked) return; const margin=Math.max(14,Math.round(Math.min(w,h)*.055));ctx.save();ctx.fillStyle=ui.foreground.value;ctx.globalAlpha=.95;ctx.font=`700 ${Math.max(9,Math.round(Math.min(w,h)*.026))}px monospace`;ctx.textBaseline="top";ctx.fillText(ui.posterTitle.value||"GLYPHSHIFT",margin,margin+8);ctx.textBaseline="alphabetic";ctx.textAlign="right";ctx.fillText(ui.posterFooter.value||"// ASCII MOTION",w-margin,h-margin-9);ctx.restore(); }
+  function updateLiveText(lines,w,h,cell,cellH){
+    const useText=ui.previewEngine.value==="text"; canvasWrap.classList.toggle("is-live-text",useText);
+    if(!useText){ canvasWrap.style.width="";canvasWrap.style.height="";liveText.textContent="";return; }
+    const displayScale=Math.min(1,Math.max(.01,(drop.clientWidth-4)/w),Math.max(.01,(drop.clientHeight-4)/h));
+    const fontSize=Math.max(4,cellH*displayScale), glyphAdvance=ctx.measureText("M").width*displayScale, letterSpacing=Math.max(-fontSize*.32,cell*displayScale-glyphAdvance);
+    canvasWrap.style.width=`${Math.max(1,w*displayScale)}px`; canvasWrap.style.height=`${Math.max(1,h*displayScale)}px`;
+    liveText.style.fontSize=`${fontSize}px`; liveText.style.lineHeight=`${Math.max(4,cellH*displayScale)}px`; liveText.style.letterSpacing=`${letterSpacing}px`; liveText.textContent=lines.join("\n");
+  }
   function render(now=performance.now()){
     requestAnimationFrame(render);
     if(!state.imageReady) return;
@@ -279,16 +285,17 @@
     $("fps-readout").textContent=`${ui.fps.value} FPS`;
     fillBackground(w,h); ctx.font=`${Math.max(1,cellH)}px monospace`; ctx.textBaseline="top";
     const mode=ui.mode.value, data=frame.data, glitch=Number(ui.glitch.value)/100;
-    let visibleGlyphs=0, darkAdded=0, brightAdded=0;
-    for(let y=0;y<state.analyserH;y++) for(let x=0;x<state.analyserW;x++){
+    let visibleGlyphs=0, darkAdded=0, brightAdded=0; const liveLines=ui.previewEngine.value==="text"?[]:null;
+    for(let y=0;y<state.analyserH;y++) { let liveLine=""; for(let x=0;x<state.analyserW;x++){
       const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
       if(ui.edges.checked || ["edge","edge-skeleton"].includes(mode)) { const right=x+1<state.analyserW?i+4:i, down=y+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
-      let shown=mode==="direct" || mode==="glyph-build" || mode==="coarse-mosaic" || mode==="iterative-draft" || revealFor(x,y,v,t,mode); if(!shown) continue;
+      let shown=mode==="direct" || mode==="glyph-build" || mode==="coarse-mosaic" || mode==="iterative-draft" || revealFor(x,y,v,t,mode); if(!shown){if(liveLines)liveLine+=" ";continue;}
       let char=renderGlyph(v,x,y,t,mode); if(mode==="terminal" && ui.glyphSource.value==="ramp" && t/Number(ui.duration.value)<seed(x,y)*.9) char=("01/\\|[]{}<>+-")[Math.floor(seed(y,x+12)*12)];
       const jitter=glitch>0&&seed(x,Math.floor(t*ui.fps.value))<glitch*.14 ? Math.round((seed(y,x)*2-1)*cell*2) : 0;
-      if(char!==" "){ visibleGlyphs++; if(v<.28)darkAdded++; if(v>.72)brightAdded++; }
+      if(liveLines)liveLine+=char; if(char!==" "){ visibleGlyphs++; if(v<.28)darkAdded++; if(v>.72)brightAdded++; }
       ctx.globalAlpha=ui.glyphSource.value==="text"?Math.max(.08,Math.pow(v,.72)):1; ctx.fillStyle=glyphColor(v,r,g,b); ctx.fillText(char,x*cell+jitter,y*cellH);
-    }
+    } if(liveLines)liveLines.push(liveLine); }
+    if(liveLines)updateLiveText(liveLines,w,h,cell,cellH); else updateLiveText([],w,h,cell,cellH);
     const addedGlyphs=Math.max(0,visibleGlyphs-state.lastVisibleGlyphs); tickBuild(addedGlyphs,wasPlaying,{progress:Math.min(1,t/Number(ui.duration.value)),darkMass:darkAdded>brightAdded*1.6,brightMass:brightAdded>darkAdded*1.6}); state.lastVisibleGlyphs=visibleGlyphs;
     ctx.globalAlpha=1;
     const scan=Number(ui.scanlines.value)/100; if(scan){ ctx.fillStyle=`rgba(0,0,0,${scan*.42})`; for(let y=0;y<h;y+=4)ctx.fillRect(0,y,w,1); }

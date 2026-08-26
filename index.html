@@ -28,8 +28,9 @@
           <div class="stage-toolbar">
             <button id="choose-file" class="primary">ATTACH SOURCE</button>
             <button id="fit-view" class="ghost">FIT VIEW</button>
+            <select id="preview-engine" aria-label="Preview renderer"><option value="text" selected>TRUE TEXT</option><option value="canvas">CANVAS</option></select>
           </div>
-          <div id="canvas-wrap" class="canvas-wrap"><canvas id="output" width="960" height="540"></canvas></div>
+          <div id="canvas-wrap" class="canvas-wrap"><canvas id="output" width="960" height="540"></canvas><pre id="live-text" class="live-text" aria-label="Live copyable ASCII preview"></pre></div>
           <div id="empty-state" class="empty-state">
             <div class="crosshair">+</div>
             <strong>ATTACH A SOURCE</strong>
