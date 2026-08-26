@@ -264,6 +264,7 @@
               <option value="word-reveal">WORD REVEAL</option>
               <option value="compression-decode">COMPRESSION DECODE</option>
               <option value="corruption-repair">CORRUPTION REPAIR</option>
+              <option value="iterative-draft">ITERATIVE DRAFT / BLOCK → DETAIL</option>
               <option value="glyph-build">GLYPH COLLAPSE / LARGE → SET SIZE</option>
               <option value="pixel-sort">PIXEL-SORT REVEAL</option>
               <option value="scanline">SCANLINE DEVELOP</option>
@@ -305,6 +306,20 @@
             </label>
             <label>LEVEL <output id="audio-level-out">55</output><input id="audio-level" type="range" min="0" max="100" value="55" /></label>
           </div>
+          <label>CLASSIC TICK VOICE
+            <select id="tick-voice">
+              <option value="classic" selected>01 — CLASSIC RESOLVE</option>
+              <option value="heap">02 — HEAP CLACK</option>
+              <option value="cache">03 — CACHE MISS</option>
+              <option value="leak">04 — MEMORY LEAK</option>
+              <option value="relay">05 — RELAY SNAP</option>
+              <option value="ceramic">06 — CERAMIC BIT</option>
+              <option value="needle">07 — NEEDLE PING</option>
+              <option value="drive">08 — DRIVE SEEK</option>
+              <option value="vending">09 — VENDING TICK</option>
+              <option value="concrete">10 — CONCRETE CLACK</option>
+            </select>
+          </label>
           <div class="checks"><label><input id="mute-first-tick" type="checkbox" /> MUTE FIRST TICK</label><label><input id="mute-final-tick" type="checkbox" /> MUTE END-LOCK</label></div>
           <button id="record" class="record">● EXPORT BUILD (WEBM)</button>
           <p id="export-note" class="hint">Classic Tick fires once per rendered build step—set 6–12 FPS for deliberately chunky arrivals. Data Texture is optional ambient sound, not combined with Classic. The frame holds after the build; export captures the one-shot build.</p>

@@ -6,7 +6,7 @@
     mode:$("mode"), size:$("cell-size"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textLayout:$("text-layout"), textScale:$("text-scale"), textBlend:$("text-blend"), lockSentence:$("lock-sentence"), lockedSentence:$("locked-sentence"), boldWords:$("bold-words"), findText:$("find-text"), replaceText:$("replace-text"),
     brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"),
     colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"),
-    effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), prompt:$("prompt"),
+    effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), tickVoice:$("tick-voice"), prompt:$("prompt"),
     pattern:$("pattern"), patternTarget:$("pattern-target"), patternTile:$("pattern-tile"), borderStyle:$("border-style"), borderMotion:$("border-motion"), divider:$("divider"), safeArea:$("safe-area"), posterMode:$("poster-mode"), posterTitle:$("poster-title"), posterFooter:$("poster-footer"), asciiColumns:$("ascii-columns"), asciiBorder:$("ascii-border"), muteFirstTick:$("mute-first-tick"), muteFinalTick:$("mute-final-tick")
   };
   const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1, lastVisibleGlyphs:0, generationTicks:0, firstTick:true, finalTick:false, viewport:{x:0,y:0,zoom:1} };
@@ -61,19 +61,32 @@
     classicTickLoading=algorithmicEngine().then(()=>fetch("assets/ascii-resolve-click-loop.mp3")).then(response=>response.arrayBuffer()).then(data=>algoContext.decodeAudioData(data)).then(buffer=>(classicTickBuffer=buffer)).catch(()=>null);
     return classicTickLoading;
   }
+  const tickVoices={
+    classic:{rate:1, tone:"triangle", frequency:720, filter:2100, noise:0},
+    heap:{rate:.72, tone:"square", frequency:82, filter:480, noise:.025},
+    cache:{rate:1.28, tone:"square", frequency:1750, filter:3600, noise:.012},
+    leak:{rate:.91, tone:"sawtooth", frequency:180, filter:980, noise:.04},
+    relay:{rate:.82, tone:"square", frequency:310, filter:1350, noise:.018},
+    ceramic:{rate:1.12, tone:"triangle", frequency:1180, filter:3900, noise:.006},
+    needle:{rate:1.34, tone:"sine", frequency:2450, filter:4800, noise:0},
+    drive:{rate:.98, tone:"sawtooth", frequency:430, filter:1500, noise:.025},
+    vending:{rate:1.06, tone:"square", frequency:640, filter:2400, noise:.016},
+    concrete:{rate:.66, tone:"square", frequency:104, filter:630, noise:.045}
+  };
   function playClassicTick(step,addedGlyphs,kind="scatter"){
     if(!algoContext || ui.resolveSound.value!=="classic") return;
     const start=algoContext.currentTime+.002, impact=Math.min(1,.35+Math.log2(Math.max(1,addedGlyphs))/10), level=Number(ui.audioLevel.value)/100*impact;
-    const profile={row:[.88,.085,130],scatter:[1,.055,650],dark:[.78,.10,90],bright:[1.25,.04,1550],lock:[.72,.14,180],rain:[1.1,.045,980],sync:[.95,.065,410]}[kind]||[1,.06,650];
+    const profile={row:[.88,.085,130],scatter:[1,.055,650],dark:[.78,.10,90],bright:[1.25,.04,1550],lock:[.72,.14,180],rain:[1.1,.045,980],sync:[.95,.065,410]}[kind]||[1,.06,650], voice=tickVoices[ui.tickVoice.value]||tickVoices.classic;
     if(classicTickBuffer){
       const source=algoContext.createBufferSource(), gain=algoContext.createGain();
-      source.buffer=classicTickBuffer; source.playbackRate.value=profile[0]+((step%5)-2)*.025;
+      source.buffer=classicTickBuffer; source.playbackRate.value=profile[0]*voice.rate+((step%5)-2)*.025;
       gain.gain.setValueAtTime(0,start); gain.gain.linearRampToValueAtTime(level*.62,start+.002); gain.gain.exponentialRampToValueAtTime(.0001,start+profile[1]);
       source.connect(gain); gain.connect(algoMaster); source.start(start,0,Math.min(profile[1],classicTickBuffer.duration)); source.stop(start+profile[1]+.005); algoNodes.push(source,gain);
-      if(kind!=="scatter") algoTone(kind==="dark"||kind==="lock"?"square":"triangle",profile[2]+(step%3)*16,start,Math.min(.045,profile[1]),level*.08,{filter:kind==="bright"?3200:800,q:4,release:.003});
+      if(kind!=="scatter"||voice!==tickVoices.classic) algoTone(voice.tone,voice.frequency+profile[2]*.18+(step%3)*16,start,Math.min(.045,profile[1]),level*.08,{filter:Math.max(400,voice.filter),q:4,release:.003});
+      if(voice.noise) algoNoise(start,Math.min(.035,profile[1]),level*voice.noise,{filter:voice.filter,q:5,seed:step*31+addedGlyphs,release:.002});
       return;
     }
-    algoTone("square",profile[2]+(step%4)*70,start,.018,level*.15,{filter:2800,q:8,release:.002});
+    algoTone(voice.tone,voice.frequency+profile[2]*.2+(step%4)*70,start,.018,level*.15,{filter:voice.filter,q:8,release:.002});
   }
   function tickBuild(addedGlyphs,active,info={}){
     if(!active || !isAnimated() || ui.resolveSound.value!=="classic" || addedGlyphs<=0) return;
@@ -186,6 +199,14 @@
       const corruption="@#%?01/\\|[]{}<>"; const repair=Math.max(0,Math.min(1,(progress-seed(x,y)*.16)/.84));
       if(seed(x+9,y+17)>repair) char=corruption[Math.floor(seed(y+31,x+3)*corruption.length)];
     }
+    if(mode==="iterative-draft" && progress<.94){
+      // A deliberately imperfect drafting pass: broad marks first, then changing
+      // hypotheses that settle into the sampled glyph as detail arrives.
+      const draft=" .,:;/-=+*xX#@";
+      const stage=Math.min(4,Math.floor(progress*5)), confidence=Math.max(0,Math.min(1,(progress-.18)/.76));
+      const revision=seed(x+stage*43,y+stage*97);
+      if(revision>confidence) char=draft[Math.min(draft.length-1,Math.max(0,Math.floor((bright+(seed(x+stage,y-stage)-.5)*.52)*(draft.length-1))))];
+    }
     if(["fill","both"].includes(ui.patternTarget.value) && ui.pattern.value!=="none" && char!==" ") char=patternGlyph(x,y,bright) || char;
     return char;
   }
@@ -205,6 +226,7 @@
   function effectiveGlyphSize(time){
     const target=Number(ui.size.value);
     if(ui.mode.value==="coarse-mosaic"){ const p=Math.max(0,Math.min(1,time/Number(ui.duration.value))), stage=Math.max(0,3-Math.floor(p*4)); return Math.max(target,Math.min(180,target*2**stage)); }
+    if(ui.mode.value==="iterative-draft"){ const p=Math.max(0,Math.min(1,time/Number(ui.duration.value))); const stages=[144,88,48,Math.max(target*2,target+2),target]; return Math.max(target,stages[Math.min(stages.length-1,Math.floor(p*stages.length))]); }
     if(ui.mode.value!=="glyph-build") return target;
     const p=Math.max(0,Math.min(1,time/Number(ui.duration.value))), smooth=p*p*(3-2*p);
     return Math.max(target,Math.round(180+(target-180)*smooth));
@@ -261,7 +283,7 @@
     for(let y=0;y<state.analyserH;y++) for(let x=0;x<state.analyserW;x++){
       const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
       if(ui.edges.checked || ["edge","edge-skeleton"].includes(mode)) { const right=x+1<state.analyserW?i+4:i, down=y+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
-      let shown=mode==="direct" || mode==="glyph-build" || mode==="coarse-mosaic" || revealFor(x,y,v,t,mode); if(!shown) continue;
+      let shown=mode==="direct" || mode==="glyph-build" || mode==="coarse-mosaic" || mode==="iterative-draft" || revealFor(x,y,v,t,mode); if(!shown) continue;
       let char=renderGlyph(v,x,y,t,mode); if(mode==="terminal" && ui.glyphSource.value==="ramp" && t/Number(ui.duration.value)<seed(x,y)*.9) char=("01/\\|[]{}<>+-")[Math.floor(seed(y,x+12)*12)];
       const jitter=glitch>0&&seed(x,Math.floor(t*ui.fps.value))<glitch*.14 ? Math.round((seed(y,x)*2-1)*cell*2) : 0;
       if(char!==" "){ visibleGlyphs++; if(v<.28)darkAdded++; if(v>.72)brightAdded++; }
@@ -328,7 +350,7 @@
       for(let x=0;x<exportW;x++){
         const sx=Math.min(state.analyserW-1,Math.floor(x/exportW*state.analyserW)), sy=Math.min(state.analyserH-1,Math.floor(y/exportH*state.analyserH)), i=(sy*state.analyserW+sx)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
         if(ui.edges.checked || ["edge","edge-skeleton"].includes(mode)) { const right=sx+1<state.analyserW?i+4:i, down=sy+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
-        const shown=mode==="direct" || ["glyph-build","coarse-mosaic"].includes(mode) || revealFor(sx,sy,v,t,mode); if(!shown){ line+=" "; continue; }
+        const shown=mode==="direct" || ["glyph-build","coarse-mosaic","iterative-draft"].includes(mode) || revealFor(sx,sy,v,t,mode); if(!shown){ line+=" "; continue; }
         line+=mode==="terminal"&&ui.glyphSource.value==="ramp"&&t/Number(ui.duration.value)<seed(sx,sy)*.9?("01/\\|[]{}<>+-")[Math.floor(seed(sy,sx+12)*12)]:renderGlyph(v,sx,sy,t,mode);
       }
       lines.push(line.replace(/\s+$/,""));
@@ -398,6 +420,7 @@
   document.querySelectorAll("#controls input, #controls select, #controls textarea").forEach(control=>{ if(control.type!=="file") control.addEventListener("change",commitHistory); });
   window.addEventListener("keydown",e=>{
     if(e.target.matches("input, textarea, select")) return;
+    if(e.code==="Space" && !e.target.matches("button")){ e.preventDefault(); $("play").click(); return; }
     if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==="z"){ e.preventDefault(); e.shiftKey?redo():undo(); }
     if(e.altKey&&e.key==="ArrowLeft"){ e.preventDefault(); undo(); }
     if(e.altKey&&e.key==="ArrowRight"){ e.preventDefault(); redo(); }

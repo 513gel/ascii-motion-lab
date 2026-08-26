@@ -95,6 +95,16 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
 - Generation audio now classifies real batches: rows have printer-like ticks,
   scattered arrivals have short ticks, dark masses clack low, highlights ping
   high, and final arrivals lock. First and final ticks can be muted independently.
+- **Iterative Draft / Block → Detail** is a separate immersive build mode: it
+  shows the entire image as very large provisional glyph blocks, re-samples at
+  five increasingly fine grid stages, makes deterministic-but-wrong character
+  attempts during intermediate stages, and corrects every cell into the true
+  final sampled glyph. It always builds once and holds the final frame.
+- Classic Tick has ten selectable one-shot voices: Classic Resolve, Heap Clack,
+  Cache Miss, Memory Leak, Relay Snap, Ceramic Bit, Needle Ping, Drive Seek,
+  Vending Tick, and Concrete Clack. They retain batch-tied timing while using
+  different playback, tone, filter, and noise profiles. Spacebar toggles the
+  Play/Pause/Replay transport unless the user is typing in a field.
 - Text Foundation now supports multiple local documents in one import, left,
   right, vertical, and spiral traversal, a literal locked sentence, text/ramp
   blend, weighted bold words, local find/replace, and a browser-local reusable
