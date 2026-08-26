@@ -59,23 +59,11 @@
 
         <section class="panel">
           <div class="panel-title">CONVERSION</div>
-          <label>MODE
-            <select id="mode">
-              <option value="direct" selected>DIRECT ASCII — STILL</option>
-              <option value="decode">CHARACTER BUILD / DECODE</option>
-              <option value="pixel-sort">PIXEL-SORT REVEAL</option>
-              <option value="scanline">SCANLINE DEVELOP</option>
-              <option value="edge">EDGE-FIRST</option>
-              <option value="terminal">TERMINAL RESOLVE</option>
-            </select>
-          </label>
           <div class="two-col">
             <label>GLYPH SIZE <output id="cell-size-out">9</output>
-              <input id="cell-size" type="range" min="5" max="60" value="9" />
+              <input id="cell-size" type="range" min="5" max="180" value="9" />
             </label>
-            <label>ANIMATION <output id="duration-out">3.5s</output>
-              <input id="duration" type="range" min="1" max="12" step="0.5" value="3.5" />
-            </label>
+            <p class="hint compact-hint">Animated styles build once, then hold the completed frame.</p>
           </div>
           <div class="two-col">
             <label>BRIGHTNESS <output id="brightness-out">0</output>
@@ -139,21 +127,19 @@
           <label>PASTE LYRICS / TEXT BLOCK <span class="field-note">used only in Text Weave</span>
             <textarea id="custom-text" rows="3" placeholder="Paste lyrics, a quote, a poem, or anything else you want the picture to be made from."></textarea>
           </label>
-          <label>TEXT SCALE <output id="text-scale-out">1</output>
+          <label>TEXT REPEAT <output id="text-scale-out">1</output>
             <input id="text-scale" type="range" min="1" max="8" step="1" value="1" />
           </label>
-          <p class="hint">Glyph Size scales the whole image. Text Scale controls how long each pasted character stays on screen before the next one appears.</p>
+          <p class="hint">Glyph Size makes every visible character physically larger or smaller. Text Repeat only controls how long pasted characters repeat before the next one appears.</p>
         </section>
 
         <section class="panel">
           <div class="panel-title">MOTION + SIGNAL</div>
           <div class="two-col">
-            <label>RENDER FPS
-              <select id="fps"><option value="12">12</option><option value="15">15</option><option value="24">24</option><option value="30" selected>30</option><option value="60">60</option></select>
-            </label>
             <label>SWEEP
               <select id="direction"><option value="left">LEFT → RIGHT</option><option value="right">RIGHT → LEFT</option><option value="top">TOP → BOTTOM</option><option value="bottom">BOTTOM → TOP</option><option value="random" selected>PIXEL SORT</option></select>
             </label>
+            <p class="hint compact-hint">Frame rate and duration live in Output, where they belong.</p>
           </div>
           <div class="two-col">
             <label>GLITCH <output id="glitch-out">8</output>
@@ -180,21 +166,52 @@
             <button id="restart" class="ghost">RESTART</button>
             <button id="snapshot" class="ghost">PNG FRAME</button>
           </div>
-          <label>OUTPUT SCALE <output id="output-scale-out">100%</output>
-            <input id="output-scale" type="range" min="25" max="200" step="5" value="100" />
+          <label>BUILD STYLE
+            <select id="mode">
+              <option value="direct" selected>DIRECT ASCII — STILL</option>
+              <option value="decode">CHARACTER BUILD / DECODE</option>
+              <option value="pixel-sort">PIXEL-SORT REVEAL</option>
+              <option value="scanline">SCANLINE DEVELOP</option>
+              <option value="edge">EDGE-FIRST</option>
+              <option value="terminal">TERMINAL RESOLVE</option>
+            </select>
           </label>
+          <div class="two-col">
+            <label>ASPECT RATIO
+              <select id="aspect-ratio"><option value="source" selected>SOURCE RATIO</option><option value="16:9">16:9 WIDESCREEN</option><option value="9:16">9:16 VERTICAL</option><option value="1:1">1:1 SQUARE</option><option value="4:5">4:5 PORTRAIT</option><option value="4:3">4:3 CLASSIC</option><option value="3:2">3:2 PHOTO</option></select>
+            </label>
+            <label>LONG EDGE
+              <select id="output-resolution"><option value="native" selected>SOURCE NATIVE</option><option value="720">720 PX</option><option value="1080">1080 PX</option><option value="1440">1440 PX</option><option value="1920">1920 PX</option><option value="2160">2160 PX</option><option value="3840">3840 PX / 4K</option><option value="custom">CUSTOM</option></select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>CUSTOM LONG EDGE
+              <input id="custom-resolution" type="number" min="64" step="1" value="1080" inputmode="numeric" />
+            </label>
+            <label>RENDER FPS
+              <select id="fps"><option value="6">6 — EXTREMELY CHUNKY</option><option value="8">8 — CHUNKY</option><option value="12">12 — PSX</option><option value="15">15</option><option value="24">24</option><option value="30" selected>30</option><option value="60">60</option></select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>BUILD LENGTH <output id="duration-out">3.5s</output>
+              <input id="duration" type="range" min="0.5" max="20" step="0.5" value="3.5" />
+            </label>
+            <label>SIZE MULTIPLIER <output id="output-scale-out">100%</output>
+              <input id="output-scale" type="range" min="25" max="200" step="5" value="100" />
+            </label>
+          </div>
           <div class="audio-row">
-            <label><input id="resolve-audio" type="checkbox" checked /> SYNC RESOLVE SOUND</label>
-            <label>SOUND DNA
+            <label>SOUND
               <select id="resolve-sound">
-                <option value="algorithmic" selected>ALGORITHMIC // HEAP + CACHE + MEMORY</option>
-                <option value="classic">CLASSIC // CLICK LOOP</option>
+                <option value="none">NONE / SILENT</option>
+                <option value="classic" selected>CLASSIC TICK / EACH BUILD STEP</option>
+                <option value="algorithmic">DATA TEXTURE / AMBIENT LAYERS</option>
               </select>
             </label>
-            <label>LEVEL <output id="audio-level-out">65</output><input id="audio-level" type="range" min="0" max="100" value="65" /></label>
+            <label>LEVEL <output id="audio-level-out">55</output><input id="audio-level" type="range" min="0" max="100" value="55" /></label>
           </div>
-          <button id="record" class="record">● EXPORT LOOP (WEBM + SOUND)</button>
-          <p id="export-note" class="hint">Algorithmic Resolve layers Memory Leak under the animation, drops Cache Miss through the build, then lands Heap Clack at lock-in. Native browser export is WebM; MP4 export is planned through an optional local FFmpeg companion.</p>
+          <button id="record" class="record">● EXPORT BUILD (WEBM)</button>
+          <p id="export-note" class="hint">Classic Tick fires once per rendered build step—set 6–12 FPS for deliberately chunky arrivals. Data Texture is optional ambient sound, not combined with Classic. The frame holds after the build; export captures the one-shot build.</p>
         </section>
       </aside>
     </main>

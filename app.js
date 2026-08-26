@@ -6,18 +6,16 @@
     mode:$("mode"), size:$("cell-size"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textScale:$("text-scale"),
     brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"),
     colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"),
-    effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), resolveAudio:$("resolve-audio"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), prompt:$("prompt")
+    effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), prompt:$("prompt")
   };
-  const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), imageReady:false, recording:false, analyserW:0, analyserH:0 };
+  const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1 };
   const outputNames={size:"cell-size-out",duration:"duration-out",textScale:"text-scale-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",outputScale:"output-scale-out",audioLevel:"audio-level-out"};
   const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:key==="outputScale"?`${ui[key].value}%`:ui[key].value);
   document.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",updateReadouts)); updateReadouts();
-  const resolveAudio = new Audio("assets/ascii-resolve-click-loop.mp3");
-  resolveAudio.preload="auto"; resolveAudio.loop=true;
-  let algoContext=null, algoMaster=null, algoCapture=null, algoTimer=0, algoNodes=[];
+  let algoContext=null, algoMaster=null, algoCapture=null, algoTimer=0, algoNodes=[], classicTickBuffer=null, classicTickLoading=null;
   const isAnimated=()=>ui.mode.value!=="direct";
   function stopAlgorithmicAudio(){ clearTimeout(algoTimer); algoTimer=0; algoNodes.forEach(node=>{ try{node.stop?.();node.disconnect?.();}catch{} }); algoNodes=[]; }
-  function stopResolveAudio(){ resolveAudio.pause(); resolveAudio.currentTime=0; stopAlgorithmicAudio(); }
+  function stopResolveAudio(){ stopAlgorithmicAudio(); }
   function algorithmicEngine(){
     if(!algoContext){ algoContext=new (window.AudioContext||window.webkitAudioContext)(); algoMaster=algoContext.createGain(); algoCapture=algoContext.createMediaStreamDestination(); algoMaster.connect(algoContext.destination); algoMaster.connect(algoCapture); }
     return algoContext.resume();
@@ -26,7 +24,7 @@
   function algoTone(type,freq,start,duration,level,opts={}){ const osc=algoContext.createOscillator(), filter=algoContext.createBiquadFilter(); osc.type=type; osc.frequency.value=freq; filter.type=opts.type||"lowpass"; filter.frequency.value=opts.filter||1800; filter.Q.value=opts.q||2; osc.connect(filter); algoGate(filter,start,duration,level,opts.attack||.003,opts.release||.007); osc.start(start); osc.stop(start+duration+.02); algoNodes.push(osc,filter); }
   function algoNoise(start,duration,level,opts={}){ const buffer=algoContext.createBuffer(1,Math.max(1,Math.ceil(algoContext.sampleRate*duration)),algoContext.sampleRate), data=buffer.getChannelData(0); let seed=opts.seed||17; for(let i=0;i<data.length;i++){seed=(seed*1664525+1013904223)>>>0;data[i]=(seed/4294967296)*2-1;} const src=algoContext.createBufferSource(), filter=algoContext.createBiquadFilter(); src.buffer=buffer; filter.type=opts.type||"bandpass"; filter.frequency.value=opts.filter||1600; filter.Q.value=opts.q||3; src.connect(filter); algoGate(filter,start,duration,level,opts.attack||.002,opts.release||.006); src.start(start);src.stop(start+duration+.02);algoNodes.push(src,filter); }
   function algorithmicCycle(){
-    if(!state.playing || !isAnimated() || !ui.resolveAudio.checked || ui.resolveSound.value!=="algorithmic") return;
+    if(!state.playing || !isAnimated() || ui.resolveSound.value!=="algorithmic") return;
     stopAlgorithmicAudio(); const seconds=Math.max(.8,Number(ui.duration.value)), start=algoContext.currentTime+.03, scale=Math.max(.5,seconds/3.5), level=Number(ui.audioLevel.value)/100; algoMaster.gain.setValueAtTime(level,start);
     // Memory Leak: a low dirty bed that never falls in pitch, avoiding the old ball-bounce tail.
     [0,.14,.28,.42].forEach((p,i)=>{ const at=start+p*scale; algoTone("sawtooth",[72,75,78,82][i],at,.09*scale,.095,{filter:420,q:3,release:.006}); algoNoise(at,.06*scale,.032,{filter:520+i*90,q:3,seed:91+i,release:.004}); });
@@ -37,25 +35,67 @@
     [[1.48,86],[1.68,132],[1.88,86],[2.08,168],[2.28,112]].forEach(([p,f],i)=>{ const at=start+p*scale; algoTone("square",f,at,.04*scale,.12,{filter:520,q:5,release:.001}); algoNoise(at,.018*scale,.038,{filter:860,q:7,seed:121+i,release:.001}); });
     algoTimer=window.setTimeout(algorithmicCycle,seconds*1000);
   }
+  function loadClassicTick(){
+    if(classicTickBuffer) return Promise.resolve(classicTickBuffer);
+    if(classicTickLoading) return classicTickLoading;
+    classicTickLoading=algorithmicEngine().then(()=>fetch("assets/ascii-resolve-click-loop.mp3")).then(response=>response.arrayBuffer()).then(data=>algoContext.decodeAudioData(data)).then(buffer=>(classicTickBuffer=buffer)).catch(()=>null);
+    return classicTickLoading;
+  }
+  function playClassicTick(step){
+    if(!algoContext || ui.resolveSound.value!=="classic") return;
+    const start=algoContext.currentTime+.002, level=Number(ui.audioLevel.value)/100;
+    if(classicTickBuffer){
+      const source=algoContext.createBufferSource(), gain=algoContext.createGain();
+      source.buffer=classicTickBuffer; source.playbackRate.value=1+((step%5)-2)*.025;
+      gain.gain.setValueAtTime(0,start); gain.gain.linearRampToValueAtTime(level*.62,start+.002); gain.gain.exponentialRampToValueAtTime(.0001,start+.075);
+      source.connect(gain); gain.connect(algoMaster); source.start(start,0,Math.min(.08,classicTickBuffer.duration)); source.stop(start+.085); algoNodes.push(source,gain);
+      return;
+    }
+    algoTone("square",850+(step%4)*90,start,.018,level*.15,{filter:2800,q:8,release:.002});
+  }
+  function tickBuild(t){
+    if(!state.playing || !isAnimated() || ui.resolveSound.value!=="classic") return;
+    const steps=Math.max(1,Math.round(Number(ui.duration.value)*Number(ui.fps.value))), step=Math.floor(Math.min(1,t/Number(ui.duration.value))*steps);
+    if(step<=state.lastSoundStep) return;
+    state.lastSoundStep=step; playClassicTick(step);
+  }
   function syncResolveAudio(){
-    if(!state.playing || !isAnimated() || !ui.resolveAudio.checked){ stopResolveAudio(); return; }
-    if(ui.resolveSound.value==="algorithmic"){ resolveAudio.pause(); algorithmicEngine().then(algorithmicCycle).catch(()=>{ transport.textContent="TAP PLAY TO ENABLE SOUND"; }); return; }
-    stopAlgorithmicAudio();
-    resolveAudio.volume=Number(ui.audioLevel.value)/100;
-    if(Number.isFinite(resolveAudio.duration) && resolveAudio.duration>0) resolveAudio.playbackRate=Math.max(.3,Math.min(3,resolveAudio.duration/Number(ui.duration.value)));
-    resolveAudio.currentTime=0; resolveAudio.play().catch(()=>{ transport.textContent="TAP PLAY TO ENABLE SOUND"; });
+    stopResolveAudio();
+    if(!state.playing || !isAnimated() || ui.resolveSound.value==="none") return;
+    algorithmicEngine().then(()=>{
+      if(ui.resolveSound.value==="classic"){ algoMaster.gain.setValueAtTime(1,algoContext.currentTime); loadClassicTick(); }
+      if(ui.resolveSound.value==="algorithmic") algorithmicCycle();
+    }).catch(()=>{ transport.textContent="TAP PLAY TO ENABLE SOUND"; });
   }
 
   function seed(x,y){ let n=(x*374761393+y*668265263)>>>0; n=(n^(n>>>13))*1274126177; return ((n^(n>>>16))>>>0)/4294967296; }
   function mediaDimensions(){ if(!state.media) return [960,540]; return state.sourceKind==="video"?[state.media.videoWidth||960,state.media.videoHeight||540]:[state.media.naturalWidth||960,state.media.naturalHeight||540]; }
-  function fit(w,h,maxW,maxH){ const r=Math.min(maxW/w,maxH/h); return [Math.max(1,Math.floor(w*r)),Math.max(1,Math.floor(h*r))]; }
+  function aspectDimensions(){
+    if(ui.aspectRatio.value==="source"){ const [w,h]=mediaDimensions(); return [w,h]; }
+    return ui.aspectRatio.value.split(":").map(Number);
+  }
+  function outputDimensions(){
+    const [sourceW,sourceH]=mediaDimensions(), [ratioW,ratioH]=aspectDimensions(), aspect=ratioW/ratioH;
+    let longEdge=ui.outputResolution.value==="native"?Math.max(sourceW,sourceH):ui.outputResolution.value==="custom"?Math.max(64,Number(ui.customResolution.value)||1080):Number(ui.outputResolution.value);
+    longEdge*=Number(ui.outputScale.value)/100;
+    return aspect>=1?[Math.max(1,Math.round(longEdge)),Math.max(1,Math.round(longEdge/aspect))]:[Math.max(1,Math.round(longEdge*aspect)),Math.max(1,Math.round(longEdge))];
+  }
+  function fit(w,h,maxW,maxH){ const r=Math.min(1,maxW/w,maxH/h); return [Math.max(1,Math.floor(w*r)),Math.max(1,Math.floor(h*r))]; }
+  function drawCover(target,source,sourceW,sourceH,targetW,targetH){
+    const sourceRatio=sourceW/sourceH, targetRatio=targetW/targetH;
+    let sx=0,sy=0,sw=sourceW,sh=sourceH;
+    if(sourceRatio>targetRatio){ sw=sourceH*targetRatio; sx=(sourceW-sw)/2; }
+    else if(sourceRatio<targetRatio){ sh=sourceW/targetRatio; sy=(sourceH-sh)/2; }
+    target.drawImage(source,sx,sy,sw,sh,0,0,targetW,targetH);
+  }
   function finishAnimation(){
     if(state.completed) return; state.playing=false; state.completed=true; $("play").textContent="REPLAY";
+    state.pausedElapsed=Number(ui.duration.value);
     if(state.sourceKind==="video") state.media.pause(); stopResolveAudio(); transport.textContent="BUILD COMPLETE — FINAL FRAME HELD";
   }
   function getTime(){
-    const seconds=Number(ui.duration.value); if(!state.playing) return state.completed?seconds:0;
-    const elapsed=(performance.now()-state.started)/1000; if(isAnimated()&&elapsed>=seconds){ finishAnimation(); return seconds; }
+    const seconds=Number(ui.duration.value); if(!state.playing) return state.completed?seconds:state.pausedElapsed;
+    const elapsed=state.pausedElapsed+(performance.now()-state.started)/1000; if(isAnimated()&&elapsed>=seconds){ finishAnimation(); return seconds; }
     return elapsed;
   }
   const characterLibraries={
@@ -110,11 +150,11 @@
   }
   function sourceFrame(){
     if(!state.media) return null;
-    const [mw,mh]=mediaDimensions(), requestedCell=Number(ui.size.value), maxW=220, maxH=260;
-    // The grid is a processing preview; the output canvas itself stays at the
-    // source image's native dimensions (or the user's explicit Output Scale).
-    const [aw,ah]=fit(Math.ceil(mw/requestedCell),Math.ceil(mh/requestedCell),maxW,maxH); state.analyserW=aw; state.analyserH=ah; sample.width=aw; sample.height=ah;
-    sctx.fillStyle="#000"; sctx.fillRect(0,0,aw,ah); sctx.drawImage(state.media,0,0,mw,mh,0,0,aw,ah);
+    const [mw,mh]=mediaDimensions(), [outputW,outputH]=outputDimensions(), requestedCell=Number(ui.size.value), maxW=220, maxH=260;
+    // Clamp only the *maximum* analysis grid. Never enlarge it again: larger
+    // Glyph Size must produce genuinely fewer, bigger characters.
+    const [aw,ah]=fit(Math.ceil(outputW/requestedCell),Math.ceil(outputH/requestedCell),maxW,maxH); state.analyserW=aw; state.analyserH=ah; sample.width=aw; sample.height=ah;
+    sctx.fillStyle="#000"; sctx.fillRect(0,0,aw,ah); drawCover(sctx,state.media,mw,mh,aw,ah);
     try { return sctx.getImageData(0,0,aw,ah); } catch { return null; }
   }
   function overlay(time,w,h,cell,cellH){
@@ -132,15 +172,19 @@
     }
     ctx.restore();
   }
-  function render(){
+  function render(now=performance.now()){
     requestAnimationFrame(render);
     if(!state.imageReady) return;
+    const frameInterval=1000/Number(ui.fps.value);
+    if(state.lastRender && now-state.lastRender<frameInterval) return;
+    state.lastRender=now;
     const frame=sourceFrame(); if(!frame) return;
-    const [mw,mh]=mediaDimensions(), outputScale=Number(ui.outputScale.value)/100, w=Math.max(1,Math.round(mw*outputScale)), h=Math.max(1,Math.round(mh*outputScale)), cell=w/state.analyserW, cellH=h/state.analyserH;
+    const [w,h]=outputDimensions(), cell=w/state.analyserW, cellH=h/state.analyserH;
     if(out.width!==w||out.height!==h){ out.width=w;out.height=h; $("dimension-readout").textContent=`${w} × ${h}`; }
     $("fps-readout").textContent=`${ui.fps.value} FPS`;
     fillBackground(w,h); ctx.font=`${Math.max(1,cellH)}px monospace`; ctx.textBaseline="top";
     const t=getTime(), mode=ui.mode.value, data=frame.data, glitch=Number(ui.glitch.value)/100;
+    tickBuild(t);
     for(let y=0;y<state.analyserH;y++) for(let x=0;x<state.analyserW;x++){
       const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
       if(ui.edges.checked || mode==="edge") { const right=x+1<state.analyserW?i+4:i, down=y+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
@@ -156,10 +200,10 @@
     if(!file) return; if(state.fileURL) URL.revokeObjectURL(state.fileURL); state.fileURL=URL.createObjectURL(file); state.imageReady=false;
     // Every new source begins as an inspectable still, regardless of any form
     // values the browser restored from a previous session.
-    ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; updateReadouts(); state.playing=false; state.completed=false; $("play").textContent="PLAY"; stopResolveAudio();
+    ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; ui.aspectRatio.value="source"; ui.outputResolution.value="native"; updateReadouts(); state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; $("play").textContent="PLAY"; stopResolveAudio();
     const isVideo=file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv)$/i.test(file.name); const el=isVideo?document.createElement("video"):new Image();
     state.media=el; state.sourceKind=isVideo?"video":"image"; el.src=state.fileURL; status.textContent=`LOADING // ${file.name.toUpperCase()}`;
-    const ready=()=>{ state.imageReady=true; empty.hidden=true; state.playing=false; state.completed=false; $("play").textContent="PLAY"; state.started=performance.now(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="STATIC PREVIEW — PICK A STYLE TO ANIMATE"; if(isVideo){el.loop=true;el.muted=true;el.pause();el.currentTime=0;} };
+    const ready=()=>{ state.imageReady=true; empty.hidden=true; state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; $("play").textContent="PLAY"; state.started=performance.now(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="STATIC PREVIEW — PICK A STYLE TO ANIMATE"; if(isVideo){el.loop=true;el.muted=true;el.pause();el.currentTime=0;} };
     if(isVideo){ el.addEventListener("loadeddata",ready,{once:true}); el.addEventListener("error",()=>status.textContent="UNSUPPORTED VIDEO CODEC",{once:true}); } else { el.onload=ready; el.onerror=()=>status.textContent="UNSUPPORTED IMAGE"; }
   }
   function applyCharacterLibrary(name){
@@ -193,13 +237,13 @@
       terminal:()=>{set("mode","terminal");set("scanlines","45");set("glitch","22");},
       rain:()=>{set("mode","terminal");set("colorMode","mono");set("foreground","#ef4035");markPaletteCustom();set("effect","rain");set("effectPower","65");set("glitch","35");set("scanlines","45");}
     };
-    presets[name]?.(); state.started=performance.now(); state.playing=name!=="direct"; state.completed=false; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"){ if(state.playing)state.media.play().catch(()=>{}); else state.media.pause(); } syncResolveAudio(); updateReadouts(); transport.textContent=name==="direct"?"STATIC PREVIEW":"BUILDING — WILL HOLD ON FINAL FRAME";
+    presets[name]?.(); state.started=performance.now(); state.playing=name!=="direct"; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"){ if(state.playing)state.media.play().catch(()=>{}); else state.media.pause(); } syncResolveAudio(); updateReadouts(); transport.textContent=name==="direct"?"STATIC PREVIEW":"BUILDING — WILL HOLD ON FINAL FRAME";
   }
-  function restart(){ state.started=performance.now(); state.completed=false; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent=state.playing?"RESTARTED — BUILDING":"RESTARTED — PRESS PLAY"; }
+  function restart(){ state.started=performance.now(); state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent=state.playing?"RESTARTED — BUILDING":"RESTARTED — PRESS PLAY"; }
   function snapshot(){ const a=document.createElement("a");a.download="ascii-motion-frame.png";a.href=out.toDataURL("image/png");a.click(); }
-  async function record(){ if(!state.imageReady||state.recording)return; if(!window.MediaRecorder){transport.textContent="MEDIARECORDER NOT AVAILABLE";return;} state.recording=true; $("record").classList.add("recording"); $("record").textContent="● RECORDING…"; restart();
-    const stream=out.captureStream(Number(ui.fps.value)); let audioStream=null; if(ui.resolveAudio.checked){ if(ui.resolveSound.value==="algorithmic"){ await algorithmicEngine(); audioStream=algoCapture?.stream; } else if(resolveAudio.captureStream) audioStream=resolveAudio.captureStream(); } audioStream?.getAudioTracks().forEach(track=>stream.addTrack(track)); const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"; const rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8_000_000}); const chunks=[];
-    rec.ondataavailable=e=>e.data.size&&chunks.push(e.data); rec.onstop=()=>{ const blob=new Blob(chunks,{type});const a=document.createElement("a");a.download="ascii-motion-loop.webm";a.href=URL.createObjectURL(blob);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);state.recording=false;$("record").classList.remove("recording");$("record").textContent="● EXPORT LOOP (WEBM + SOUND)";transport.textContent="WEBM EXPORTED"; };
+  async function record(){ if(!state.imageReady||state.recording)return; if(!isAnimated()){ transport.textContent="CHOOSE A BUILD STYLE BEFORE EXPORTING VIDEO"; return; } if(!window.MediaRecorder){transport.textContent="MEDIARECORDER NOT AVAILABLE";return;} state.recording=true; state.playing=true; state.completed=false; $("record").classList.add("recording"); $("record").textContent="● RECORDING…"; restart();
+    const stream=out.captureStream(Number(ui.fps.value)); let audioStream=null; if(ui.resolveSound.value!=="none"){ await algorithmicEngine(); audioStream=algoCapture?.stream; } audioStream?.getAudioTracks().forEach(track=>stream.addTrack(track)); const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"; const rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8_000_000}); const chunks=[];
+    rec.ondataavailable=e=>e.data.size&&chunks.push(e.data); rec.onstop=()=>{ const blob=new Blob(chunks,{type});const a=document.createElement("a");a.download="ascii-motion-build.webm";a.href=URL.createObjectURL(blob);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);state.recording=false;$("record").classList.remove("recording");$("record").textContent="● EXPORT BUILD (WEBM)";transport.textContent="WEBM EXPORTED"; };
     rec.start(); setTimeout(()=>rec.stop(),Number(ui.duration.value)*1000);
   }
   fileInput.onchange=e=>{ load(e.target.files[0]); e.target.value=""; };
@@ -211,10 +255,18 @@
   ui.charset.oninput=()=>{ui.charsetPreset.value="custom";};
   ui.palettePreset.onchange=()=>applyPalettePreset(ui.palettePreset.value);
   [ui.colorMode,ui.paletteSize,ui.backgroundStyle,ui.foreground,ui.palette2,ui.palette3,ui.palette4,ui.palette5,ui.background,ui.background2].forEach(control=>control.addEventListener("input",markPaletteCustom));
-  $("play").onclick=()=>{ if(state.completed){state.completed=false;state.started=performance.now();state.playing=true;} else state.playing=!state.playing; $("play").textContent=state.playing?"PAUSE":"PLAY";transport.textContent=state.playing?"BUILDING":"PAUSED"; if(state.sourceKind==="video")state.playing?state.media.play():state.media.pause(); syncResolveAudio();};
-  ui.resolveAudio.onchange=()=>{ if(ui.resolveAudio.checked)syncResolveAudio(); else stopResolveAudio(); };
+  [ui.size,ui.aspectRatio,ui.outputResolution,ui.customResolution,ui.outputScale].forEach(control=>control.addEventListener("input",()=>{ state.lastRender=0; }));
+  ui.mode.onchange=()=>{ state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; if(ui.mode.value==="direct"){ state.playing=false; stopResolveAudio(); $("play").textContent="PLAY"; transport.textContent="STATIC PREVIEW"; } else transport.textContent="STYLE SET — PRESS PLAY"; };
+  $("play").onclick=()=>{
+    if(!isAnimated()){ state.playing=false; state.completed=false; state.pausedElapsed=0; $("play").textContent="PLAY"; stopResolveAudio(); transport.textContent="STATIC PREVIEW — CHOOSE A BUILD STYLE TO ANIMATE"; return; }
+    if(state.completed){ state.completed=false; state.pausedElapsed=0; state.started=performance.now(); state.playing=true; state.lastRender=0; state.lastSoundStep=-1; }
+    else if(state.playing){ state.pausedElapsed+=(performance.now()-state.started)/1000; state.playing=false; }
+    else { state.started=performance.now(); state.playing=true; }
+    $("play").textContent=state.playing?"PAUSE":"PLAY"; transport.textContent=state.playing?"BUILDING":"PAUSED";
+    if(state.sourceKind==="video") state.playing?state.media.play():state.media.pause(); syncResolveAudio();
+  };
   ui.resolveSound.onchange=()=>syncResolveAudio();
-  ui.audioLevel.oninput=()=>{ if(algoMaster&&algoContext) algoMaster.gain.setValueAtTime(Number(ui.audioLevel.value)/100,algoContext.currentTime); if(ui.resolveSound.value==="classic") resolveAudio.volume=Number(ui.audioLevel.value)/100; };
+  ui.audioLevel.oninput=()=>{ if(state.playing&&ui.resolveSound.value==="algorithmic") syncResolveAudio(); };
   ui.duration.onchange=()=>{ if(state.playing)syncResolveAudio(); };
   $("toggle-ui").onclick=()=>{document.body.classList.toggle("ui-hidden");$("toggle-ui").textContent=document.body.classList.contains("ui-hidden")?"SHOW UI":"HIDE UI";};
   render();

@@ -1,6 +1,6 @@
 # EMERGENCY CHAT TRANSFER
 
-Last updated: `2026-08-25 America/New_York`
+Last updated: `2026-08-26 America/New_York`
 
 ## Objective
 
@@ -39,23 +39,31 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   control-panel taps. Verified that a Direct preset tap does not open it.
 - Every newly selected source is explicitly reset to `Direct ASCII — Still`
   and paused, avoiding Chrome form-state restoration of a prior animation mode.
-- Each upload now also resets `Output Scale` to **100%**. At 100%, the output
-  canvas keeps the source's native pixel width and height; the new Output Scale
-  slider (25–200%) is the only deliberate output-size control. Glyph Size
-  affects ASCII analysis density, not output dimensions, and now ranges from
-  5–60 so it can visibly create large glyphs on high-resolution sources.
+- Each upload resets Output to **Source Native**, source aspect ratio, and
+  **100%** multiplier. Output has source/16:9/9:16/1:1/4:5/4:3/3:2 aspect
+  choices plus native/720/1080/1440/1920/2160/3840/custom long-edge choices.
+  There is no app-specific vertical cap: 9:16 at long-edge 3840 is 2160 ×
+  3840, and Custom accepts larger values at the browser/device canvas limit.
+  Changed aspect ratios use a center crop rather than stretching.
+- Glyph Size now ranges **5–180** and is genuinely physical character size.
+  A prior `fit()` function enlarged small grids back to its 220 × 260 maximum,
+  defeating the size slider. It now only clamps oversized grids down. `Text
+  Repeat` only repeats pasted Text Weave characters; it does not affect size.
 - Animated presets are now build-and-hold: once the duration completes, the
   renderer freezes on the fully resolved final frame, stops resolve audio,
   pauses any video source, and changes Play to Replay. Restart resets the
   completed state without losing settings.
-- Animated presets now default to a generated **Algorithmic Resolve** Web Audio
-  layer: Memory Leak is the quiet fixed-pitch low bed, Cache Miss creates sparse
-  comparison packets mid-build, and Heap Clack supplies major lock-in beats.
-  Output offers a mute toggle, level control, and a selector for Algorithmic or
-  Classic click-loop sound DNA. The generated graph has its own MediaStream
-  destination so its audio is added to WebM exports when browser support exists.
-  `assets/ascii-resolve-click-loop.mp3` remains available as Classic; it is a
-  3.500-second loop-safe cue made from Johnmode Freesound 826671 (CC0).
+- Output is now the full delivery panel: aspect ratio, resolution/long edge,
+  custom long edge, output multiplier, build length (0.5–20s), and actual
+  renderer/export FPS (6–60). The render loop is frame-gated, so low FPS is
+  visibly chunky rather than a mere recording label.
+- Build sound is mutually exclusive: **None**, default **Classic Tick**, or
+  optional **Data Texture**. Classic no longer passively loops: it decodes the
+  existing `assets/ascii-resolve-click-loop.mp3` (Johnmode Freesound 826671,
+  CC0) and plays a short one-shot for every rendered build step. Data Texture
+  is the old Memory Leak/Cache Miss/Heap Clack ambient composition; it never
+  layers with Classic. The shared Web Audio graph exposes a capture MediaStream
+  for WebM export where supported.
 - Color control now supports a single editable foreground color, 2–5 color
   brightness palettes, and real RGB source-color sampling. Palette presets:
   Monochrome, Oni Blood, Cobalt Signal, Phosphor Green, Amber Terminal, Game
@@ -63,8 +71,8 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   vertical-gradient, and radial-glow fills with two editable colors.
 - Character libraries now provide dense ASCII, English, binary/terminal,
   blocks, Japanese katakana, symbols/runes, and a custom ramp. Text Weave can
-  build the visible source from pasted lyrics or another text block; Text Scale
-  controls character repetition while Glyph Size controls image density.
+  build the visible source from pasted lyrics or another text block; Text Repeat
+  controls character repetition while Glyph Size controls physical size/density.
 - On phone-width layouts, the header and preview stage are sticky. Scrolling
   through controls leaves the active source/output visibly pinned below the
   header; mobile `main` must remain block layout for sticky containment.
@@ -82,8 +90,8 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   policy).
 - Git is configured **locally for this repository only** as `513gel` using
   `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
-- Browser-verified after these controls were added: local image load, Oni
-  palette/radial background, katakana library, pasted-text weave, Text Scale,
+- Browser-verified before the newest output/audio rework: local image load, Oni
+  palette/radial background, katakana library, pasted-text weave, Text Repeat,
   and Auto Source all worked without console errors. Sticky mobile preview was
   verified at 390 × 844 after a 650px page scroll (stage remained at top 50px).
   The pre-reference Chatter replacement parsed with Node and was
@@ -91,10 +99,11 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   20 entries, and validates that every tile references a real recipe. The
   connected browser still reported no controllable tabs after the change, so
   post-edit audio audition must be done manually from the live Sound Lab. The
-  Algorithmic Resolve integration and native-scale output behavior pass static
-  JavaScript/UI checks but still need a visual/audible desktop test and a
-  WebM-export test from the user. MP4 export and AI-video handoff are future
-  additions; FFmpeg should remain optional and local.
+  The newest output/audio rework passes `node --check app.js`, `git diff
+  --check`, and a script confirming every JavaScript DOM lookup has a matching
+  HTML id. It still needs a visual/audible desktop test and a WebM-export test
+  from the user. MP4 export and AI-video handoff are future additions; FFmpeg
+  should remain optional and local.
 
 ## Run
 

@@ -10,7 +10,7 @@ upload, live ASCII conversion, character-build / terminal / pixel-sort / scanlin
 / edge reveal modes; terminal-rain, particle, waveform, and ASCII-orb overlays;
 prompt-driven styling controls; 2–5 color palettes, source-color sampling and
 background gradients; built-in character libraries and text-weave glyphs; PNG
-frame export; and WebM loop export.
+frame export; and one-shot WebM build export.
 
 The default after upload is **Direct ASCII — Still**, so the source is visible
 before anything animates. Use a Quick Start animation preset or **Play** to
@@ -28,18 +28,19 @@ maps a few obvious phrases to the same visible controls—it is not an AI model.
 - **Character libraries:** dense ASCII, English A–Z, binary/terminal, blocks,
   Japanese katakana, symbols/runes, or a custom character ramp.
 - **Text Weave:** paste lyrics, a quote, or any text block; the visible image
-  is formed from that text. Glyph Size changes image density, while Text Scale
-  controls how long each pasted character repeats.
+  is formed from that text. Glyph Size changes physical character size and
+  density, while Text Repeat controls how long each pasted character repeats.
 
-## Resolve sound
+## Build sound
 
-Animated presets can play a generated **Algorithmic Resolve** by default. It
-layers a low *Memory Leak* bed beneath the animation, sparse *Cache Miss*
-packets through the build, and stronger *Heap Clack* lock-in beats near the
-end. It can be muted or level-adjusted in Output and is included in Chrome/
-desktop WebM exports when the browser exposes Web Audio capture. The original
-3.5-second click/glitch loop remains selectable as **Classic**; it was derived
-from Johnmode's CC0 Freesound sound 826671, source page:
+Output now makes the sound choice explicit: **None**, **Classic Tick**, or
+**Data Texture**. Classic Tick is the default and fires a short one-shot from
+the click source for each rendered build step; it is not a passive loop. Use
+6–12 FPS for intentionally chunky, sparse arrivals. Data Texture keeps the
+optional *Memory Leak*, *Cache Miss*, and *Heap Clack* ambient layer separate,
+so it never plays on top of Classic Tick. Sound is included in Chrome/desktop
+WebM exports when the browser exposes Web Audio capture. The click source was
+derived from Johnmode's CC0 Freesound sound 826671, source page:
 https://freesound.org/people/Johnmode/sounds/826671/
 
 ## Resolve Sound Lab
@@ -57,18 +58,22 @@ uses a different synthesis path—hard-gated noise, fixed-pitch packets, pulse
 trains, FM warble, and filtered static—rather than a shared falling-pitch
 impact or vocal decay.
 
-## Output scale
+## Output controls
 
-At **100%**, the output canvas keeps the uploaded source's native pixel width
-and height. Every upload resets to 100% rather than retaining a previous
-canvas size. Output provides a separate 25–200% scale control for deliberate
-up/down scaling; Glyph Size only changes ASCII density, not the output image
-dimensions.
+At **100%** with **Source Native** selected, output keeps the uploaded source's
+native pixel width and height. Output also provides aspect-ratio presets,
+native/720/1080/1440/1920/2160/3840 long-edge choices, custom long-edge input,
+and a separate 25–200% multiplier. There is no fixed vertical-resolution cap:
+for example, a 9:16 output with a 3840 long edge renders at 2160 × 3840.
+
+Glyph Size controls the physical size and density of every ASCII character and
+now ranges from 5–180. Text Repeat only controls repeated pasted characters in
+Text Weave; it does not alter character size.
 
 Animated presets are build-and-hold: the resolve runs once, then freezes on
 the final fully resolved frame so settings can be changed and inspected. The
 Play control becomes **Replay** after completion. Glyph Size ranges from 5 to
-60 for deliberately large ASCII, while Output Scale changes file dimensions.
+180 for deliberately large ASCII, while output settings change file dimensions.
 
 ## Run locally
 
