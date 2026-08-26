@@ -54,6 +54,28 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   grid every real render frame and always shows the entire coarse image, so it
   gains visual detail instead of revealing pixels. The Quick Start tile sets it
   to 12 FPS; the output selector exposes it as `glyph-build`.
+- The viewport is no longer a transparent upload target. `ATTACH SOURCE` opens
+  the source picker; the loaded canvas supports pointer drag panning, wheel
+  zoom (0.25–8×), and `FIT VIEW`. The viewport plus all controls use an 80-step
+  Undo/Redo history with buttons, Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, and
+  Alt+Left/Alt+Right outside editable fields. Loading a new source resets its
+  history baseline and viewport.
+- Text Weave was renamed **Text Foundation**. It retains raw pasted line breaks,
+  supports Continuous/Preserve Lines/Reverse layouts, displays a character
+  count, imports `.txt`, `.md`, or `.csv` with the local File API, and uses
+  source brightness as glyph alpha so it reads as an image mask. `TEXT REPEAT`
+  still controls character advancement.
+- Output has **Copyable Text Art**: Generate Current Frame serializes the real
+  output grid to a textarea and Copy Text sends it to the clipboard (with an
+  `execCommand` fallback). Dense ASCII/English/Binary are strict 7-bit output;
+  the other character libraries intentionally yield copyable Unicode text art.
+  Canvas-only color, scanlines, overlays, and jitter are omitted by design.
+- Classic Tick is now tied to actual generation: render counts newly visible
+  non-space glyph cells and fires one sound only when that count increases,
+  with a modest loudness change based on the number added. It is no longer
+  driven by an arbitrary timer. Avoid one sound per individual cell because
+  a dense frame can add thousands at once; each audible event is a real
+  rendering batch.
 - Animated presets are now build-and-hold: once the duration completes, the
   renderer freezes on the fully resolved final frame, stops resolve audio,
   pauses any video source, and changes Play to Replay. Restart resets the

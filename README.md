@@ -31,6 +31,33 @@ maps a few obvious phrases to the same visible controls—it is not an AI model.
   is formed from that text. Glyph Size changes physical character size and
   density, while Text Repeat controls how long each pasted character repeats.
 
+## Viewport and edit history
+
+Use **Attach Source** to select image/video files; clicking the viewport no
+longer opens the file picker. Once loaded, drag the viewport to pan, use the
+mouse wheel/trackpad to zoom, and choose **Fit View** to reset it. The top bar
+contains Undo/Redo buttons for settings, text changes, and viewport moves;
+`Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`, and `Alt+Left`/`Alt+Right` work outside text
+fields.
+
+## Text Foundation
+
+Choose **Text Foundation** to use custom writing as the ASCII material rather
+than the brightness character ramp. Paste any amount of text or import a
+`.txt`, `.md`, or `.csv` file. Continuous Flow uses the whole text stream,
+Preserve Lines maps supplied lines across the glyph rows, and Reverse Flow
+runs the stream backward. Brightness now controls the text alpha, so the source
+image forms a readable mask rather than a flat wall of letters.
+
+## Copyable ASCII / text art
+
+**Generate Current Frame** creates a literal monospace text representation of
+the active output frame; **Copy Text** puts it on the clipboard. Dense ASCII,
+English, and Binary libraries produce strict 7-bit ASCII. Blocks, katakana, and
+symbols remain copyable text art but intentionally contain Unicode characters.
+Canvas-only color, scanlines, overlays, and jitter do not exist in the plain
+text version, because it is actual characters rather than an image.
+
 ## Build sound
 
 Output now makes the sound choice explicit: **None**, **Classic Tick**, or

@@ -11,19 +11,26 @@
     <header class="topbar">
       <div class="brand">ASCII<span>//</span>MOTION <small>LAB 001</small></div>
       <div id="source-status" class="status">NO SOURCE LOADED</div>
-      <button id="toggle-ui" class="ghost" title="Hide control panel">HIDE UI</button>
+      <div class="top-actions">
+        <button id="undo" class="ghost" title="Undo last edit (Ctrl+Z)">← UNDO</button>
+        <button id="redo" class="ghost" title="Redo last edit (Ctrl+Shift+Z)">REDO →</button>
+        <button id="toggle-ui" class="ghost" title="Hide control panel">HIDE UI</button>
+      </div>
     </header>
 
     <main>
       <section class="stage-shell">
-        <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Upload source media">
-          <canvas id="output" width="960" height="540"></canvas>
+        <div id="drop-zone" class="drop-zone" tabindex="0" role="application" aria-label="ASCII viewport. Drag to pan and use the mouse wheel to zoom.">
+          <div class="stage-toolbar">
+            <button id="choose-file" class="primary">ATTACH SOURCE</button>
+            <button id="fit-view" class="ghost">FIT VIEW</button>
+          </div>
+          <div id="canvas-wrap" class="canvas-wrap"><canvas id="output" width="960" height="540"></canvas></div>
           <div id="empty-state" class="empty-state">
             <div class="crosshair">+</div>
-            <strong>DROP A SOURCE</strong>
+            <strong>ATTACH A SOURCE</strong>
             <span>IMAGE · GIF · MP4 · WEBM · MOV*</span>
-            <span class="primary browse-label">CHOOSE FILE</span>
-            <small>* Browser codec support decides whether a MOV can play. Normal MP4/WebM are safe.</small>
+            <small>Use the Attach Source button. Once loaded: drag to pan, mouse-wheel to zoom.</small>
           </div>
           <div class="stage-readout"><span id="dimension-readout">960 × 540</span><span id="fps-readout">30 FPS</span></div>
         </div>
@@ -119,19 +126,26 @@
               <select id="charset-preset"><option value="dense" selected>DENSE ASCII</option><option value="english">ENGLISH A–Z</option><option value="binary">BINARY / TERMINAL</option><option value="blocks">BLOCKS + SHADES</option><option value="katakana">JAPANESE KATAKANA</option><option value="symbols">SYMBOLS / RUNES</option><option value="custom">CUSTOM RAMP</option></select>
             </label>
             <label>CONTENT MODE
-              <select id="glyph-source"><option value="ramp" selected>BRIGHTNESS RAMP</option><option value="text">TEXT WEAVE</option></select>
+              <select id="glyph-source"><option value="ramp" selected>BRIGHTNESS RAMP</option><option value="text">TEXT FOUNDATION</option></select>
             </label>
           </div>
           <label>ACTIVE CHARACTER SET
             <input id="charset" type="text" value=" .,:;irsXA253hMHGS#9B&@" spellcheck="false" />
           </label>
-          <label>PASTE LYRICS / TEXT BLOCK <span class="field-note">used only in Text Weave</span>
-            <textarea id="custom-text" rows="3" placeholder="Paste lyrics, a quote, a poem, or anything else you want the picture to be made from."></textarea>
+          <div class="two-col">
+            <label>TEXT LAYOUT
+              <select id="text-layout"><option value="flow" selected>CONTINUOUS FLOW</option><option value="lines">PRESERVE LINES</option><option value="reverse">REVERSE FLOW</option></select>
+            </label>
+            <label>TEXT REPEAT <output id="text-scale-out">1</output>
+              <input id="text-scale" type="range" min="1" max="8" step="1" value="1" />
+            </label>
+          </div>
+          <label>PASTE OR IMPORT TEXT <span id="text-count" class="field-note">0 CHARACTERS</span>
+            <textarea id="custom-text" rows="6" placeholder="Paste lyrics, dialogue, a script, a quote, notes, or an entire text file. Text Foundation uses this as the visible material of the image."></textarea>
           </label>
-          <label>TEXT REPEAT <output id="text-scale-out">1</output>
-            <input id="text-scale" type="range" min="1" max="8" step="1" value="1" />
-          </label>
-          <p class="hint">Glyph Size makes every visible character physically larger or smaller. Text Repeat only controls how long pasted characters repeat before the next one appears.</p>
+          <div class="text-actions"><button id="import-text" class="ghost">IMPORT .TXT / .MD</button><button id="clear-text" class="ghost">CLEAR TEXT</button></div>
+          <input id="text-file-input" class="file-input" type="file" accept="text/plain,.txt,.md,.csv" aria-label="Import a text file" />
+          <p class="hint">Text Foundation can use a few words or an entire document. Glyph Size sets physical character size; Text Repeat and Layout decide how the text moves through the source shape.</p>
         </section>
 
         <section class="panel">
@@ -166,6 +180,12 @@
             <button id="play" class="primary">PLAY</button>
             <button id="restart" class="ghost">RESTART</button>
             <button id="snapshot" class="ghost">PNG FRAME</button>
+          </div>
+          <div class="copyable-ascii">
+            <div class="panel-title">COPYABLE TEXT ART <span>ACTUAL MONOSPACE CHARACTERS</span></div>
+            <div class="text-actions"><button id="generate-ascii" class="ghost">GENERATE CURRENT FRAME</button><button id="copy-ascii" class="ghost">COPY TEXT</button></div>
+            <textarea id="ascii-export" rows="8" readonly spellcheck="false" placeholder="Generate a frame to get literal copy-pasteable text art here."></textarea>
+            <p class="hint">Use Dense ASCII, English, or Binary for strict 7-bit ASCII. Other libraries are still copyable text art, but may use Unicode characters.</p>
           </div>
           <label>BUILD STYLE
             <select id="mode">

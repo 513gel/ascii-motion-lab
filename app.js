@@ -1,17 +1,36 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const out = $("output"), ctx = out.getContext("2d"), sample = document.createElement("canvas"), sctx = sample.getContext("2d", { willReadFrequently:true });
-  const fileInput=$("file-input"), drop=$("drop-zone"), empty=$("empty-state"), status=$("source-status"), transport=$("transport-status");
+  const fileInput=$("file-input"), textFileInput=$("text-file-input"), drop=$("drop-zone"), canvasWrap=$("canvas-wrap"), empty=$("empty-state"), status=$("source-status"), transport=$("transport-status");
   const ui = {
-    mode:$("mode"), size:$("cell-size"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textScale:$("text-scale"),
+    mode:$("mode"), size:$("cell-size"), duration:$("duration"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textLayout:$("text-layout"), textScale:$("text-scale"),
     brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"),
     colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"),
     effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), prompt:$("prompt")
   };
-  const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1 };
+  const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1, lastVisibleGlyphs:0, generationTicks:0, viewport:{x:0,y:0,zoom:1} };
   const outputNames={size:"cell-size-out",duration:"duration-out",textScale:"text-scale-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",outputScale:"output-scale-out",audioLevel:"audio-level-out"};
   const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:key==="outputScale"?`${ui[key].value}%`:ui[key].value);
   document.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",updateReadouts)); updateReadouts();
+  const history={past:[],future:[],current:null,restoring:false}; let viewportCommitTimer=0;
+  function applyViewport(){ const {x,y,zoom}=state.viewport; canvasWrap.style.transform=`translate(${x}px, ${y}px) scale(${zoom})`; }
+  function snapshotEditor(){
+    const controls={}; document.querySelectorAll("#controls input, #controls select, #controls textarea").forEach(el=>{ if(el.type!=="file") controls[el.id]=el.type==="checkbox"?el.checked:el.value; });
+    return {controls,viewport:{...state.viewport}};
+  }
+  function updateHistoryButtons(){ $("undo").disabled=!history.past.length; $("redo").disabled=!history.future.length; }
+  function resetHistory(){ history.past=[]; history.future=[]; history.current=snapshotEditor(); updateHistoryButtons(); }
+  function commitHistory(){
+    if(history.restoring) return; const next=snapshotEditor(); if(JSON.stringify(next)===JSON.stringify(history.current)) return;
+    if(history.current) history.past.push(history.current); if(history.past.length>80) history.past.shift(); history.current=next; history.future=[]; updateHistoryButtons();
+  }
+  function restoreHistory(snapshot,label){
+    history.restoring=true; Object.entries(snapshot.controls).forEach(([id,value])=>{ const control=$(id); if(control) control.type==="checkbox"?control.checked=value:control.value=value; });
+    state.viewport={...snapshot.viewport}; applyViewport(); $("text-count").textContent=`${ui.customText.value.length.toLocaleString()} CHARACTERS`; updateReadouts(); state.lastRender=0; state.playing=false; state.completed=false; state.pausedElapsed=0; stopResolveAudio(); history.restoring=false; transport.textContent=`${label} APPLIED`;
+  }
+  function undo(){ if(!history.past.length) return; history.future.push(history.current); history.current=history.past.pop(); restoreHistory(history.current,"UNDO"); updateHistoryButtons(); }
+  function redo(){ if(!history.future.length) return; history.past.push(history.current); history.current=history.future.pop(); restoreHistory(history.current,"REDO"); updateHistoryButtons(); }
+  function fitViewport(record=true){ state.viewport={x:0,y:0,zoom:1}; applyViewport(); if(record) commitHistory(); }
   let algoContext=null, algoMaster=null, algoCapture=null, algoTimer=0, algoNodes=[], classicTickBuffer=null, classicTickLoading=null;
   const isAnimated=()=>ui.mode.value!=="direct";
   function stopAlgorithmicAudio(){ clearTimeout(algoTimer); algoTimer=0; algoNodes.forEach(node=>{ try{node.stop?.();node.disconnect?.();}catch{} }); algoNodes=[]; }
@@ -41,9 +60,9 @@
     classicTickLoading=algorithmicEngine().then(()=>fetch("assets/ascii-resolve-click-loop.mp3")).then(response=>response.arrayBuffer()).then(data=>algoContext.decodeAudioData(data)).then(buffer=>(classicTickBuffer=buffer)).catch(()=>null);
     return classicTickLoading;
   }
-  function playClassicTick(step){
+  function playClassicTick(step,addedGlyphs){
     if(!algoContext || ui.resolveSound.value!=="classic") return;
-    const start=algoContext.currentTime+.002, level=Number(ui.audioLevel.value)/100;
+    const start=algoContext.currentTime+.002, impact=Math.min(1,.35+Math.log2(Math.max(1,addedGlyphs))/10), level=Number(ui.audioLevel.value)/100*impact;
     if(classicTickBuffer){
       const source=algoContext.createBufferSource(), gain=algoContext.createGain();
       source.buffer=classicTickBuffer; source.playbackRate.value=1+((step%5)-2)*.025;
@@ -53,11 +72,9 @@
     }
     algoTone("square",850+(step%4)*90,start,.018,level*.15,{filter:2800,q:8,release:.002});
   }
-  function tickBuild(t){
-    if(!state.playing || !isAnimated() || ui.resolveSound.value!=="classic") return;
-    const steps=Math.max(1,Math.round(Number(ui.duration.value)*Number(ui.fps.value))), step=Math.floor(Math.min(1,t/Number(ui.duration.value))*steps);
-    if(step<=state.lastSoundStep) return;
-    state.lastSoundStep=step; playClassicTick(step);
+  function tickBuild(addedGlyphs,active){
+    if(!active || !isAnimated() || ui.resolveSound.value!=="classic" || addedGlyphs<=0) return;
+    state.generationTicks++; playClassicTick(state.generationTicks,addedGlyphs);
   }
   function syncResolveAudio(){
     stopResolveAudio();
@@ -132,10 +149,15 @@
   function glyph(bright,x=0,y=0){
     const p=Math.max(0,Math.min(1,bright));
     if(ui.glyphSource.value==="text"){
-      const text=ui.customText.value.replace(/\s+/g," ").trim() || ui.charset.value || characterLibraries.dense;
-      if(p<.035) return " ";
+      const text=ui.customText.value.replace(/\r/g,"") || ui.charset.value || characterLibraries.dense;
+      if(p<.07) return " ";
       const repeat=Math.max(1,Number(ui.textScale.value));
-      return text[Math.floor((x+y*state.analyserW)/repeat)%text.length] || " ";
+      if(ui.textLayout.value==="lines"){
+        const lines=text.split("\n").filter(line=>line.length); const line=(lines.length?lines[y%lines.length]:text) || text;
+        return line[Math.floor(x/repeat)%line.length] || " ";
+      }
+      const index=Math.floor((x+y*state.analyserW)/repeat)%text.length;
+      return ui.textLayout.value==="reverse"?text[text.length-1-index]:text[index] || " ";
     }
     const chars=ui.charset.value || characterLibraries.dense;
     return chars[Math.min(chars.length-1,Math.floor(p*(chars.length-1)))];
@@ -184,21 +206,24 @@
     const frameInterval=1000/Number(ui.fps.value);
     if(state.lastRender && now-state.lastRender<frameInterval) return;
     state.lastRender=now;
-    const t=getTime(), frame=sourceFrame(t); if(!frame) return;
+    const wasPlaying=state.playing, t=getTime(), frame=sourceFrame(t); if(!frame) return;
     const [w,h]=outputDimensions(), cell=w/state.analyserW, cellH=h/state.analyserH;
     if(out.width!==w||out.height!==h){ out.width=w;out.height=h; $("dimension-readout").textContent=`${w} × ${h}`; }
     $("fps-readout").textContent=`${ui.fps.value} FPS`;
     fillBackground(w,h); ctx.font=`${Math.max(1,cellH)}px monospace`; ctx.textBaseline="top";
     const mode=ui.mode.value, data=frame.data, glitch=Number(ui.glitch.value)/100;
-    tickBuild(t);
+    let visibleGlyphs=0;
     for(let y=0;y<state.analyserH;y++) for(let x=0;x<state.analyserW;x++){
       const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
       if(ui.edges.checked || mode==="edge") { const right=x+1<state.analyserW?i+4:i, down=y+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
       let shown=mode==="direct" || mode==="glyph-build" || revealFor(x,y,v,t,mode); if(!shown) continue;
       let char=glyph(v,x,y); if(mode==="terminal" && ui.glyphSource.value==="ramp" && t/Number(ui.duration.value)<seed(x,y)*.9) char=("01/\\|[]{}<>+-")[Math.floor(seed(y,x+12)*12)];
       const jitter=glitch>0&&seed(x,Math.floor(t*ui.fps.value))<glitch*.14 ? Math.round((seed(y,x)*2-1)*cell*2) : 0;
-      ctx.fillStyle=glyphColor(v,r,g,b); ctx.fillText(char,x*cell+jitter,y*cellH);
+      if(char!==" ") visibleGlyphs++;
+      ctx.globalAlpha=ui.glyphSource.value==="text"?Math.max(.08,Math.pow(v,.72)):1; ctx.fillStyle=glyphColor(v,r,g,b); ctx.fillText(char,x*cell+jitter,y*cellH);
     }
+    const addedGlyphs=Math.max(0,visibleGlyphs-state.lastVisibleGlyphs); tickBuild(addedGlyphs,wasPlaying); state.lastVisibleGlyphs=visibleGlyphs;
+    ctx.globalAlpha=1;
     const scan=Number(ui.scanlines.value)/100; if(scan){ ctx.fillStyle=`rgba(0,0,0,${scan*.42})`; for(let y=0;y<h;y+=4)ctx.fillRect(0,y,w,1); }
     overlay(t,w,h,cell,cellH);
   }
@@ -206,22 +231,22 @@
     if(!file) return; if(state.fileURL) URL.revokeObjectURL(state.fileURL); state.fileURL=URL.createObjectURL(file); state.imageReady=false;
     // Every new source begins as an inspectable still, regardless of any form
     // values the browser restored from a previous session.
-    ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; ui.aspectRatio.value="source"; ui.outputResolution.value="native"; updateReadouts(); state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; $("play").textContent="PLAY"; stopResolveAudio();
+    ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; ui.aspectRatio.value="source"; ui.outputResolution.value="native"; fitViewport(false); updateReadouts(); state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; $("play").textContent="PLAY"; stopResolveAudio();
     const isVideo=file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv)$/i.test(file.name); const el=isVideo?document.createElement("video"):new Image();
     state.media=el; state.sourceKind=isVideo?"video":"image"; el.src=state.fileURL; status.textContent=`LOADING // ${file.name.toUpperCase()}`;
-    const ready=()=>{ state.imageReady=true; empty.hidden=true; state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; $("play").textContent="PLAY"; state.started=performance.now(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="STATIC PREVIEW — PICK A STYLE TO ANIMATE"; if(isVideo){el.loop=true;el.muted=true;el.pause();el.currentTime=0;} };
+    const ready=()=>{ state.imageReady=true; empty.hidden=true; state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; $("play").textContent="PLAY"; state.started=performance.now(); resetHistory(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="STATIC PREVIEW — PICK A STYLE TO ANIMATE"; if(isVideo){el.loop=true;el.muted=true;el.pause();el.currentTime=0;} };
     if(isVideo){ el.addEventListener("loadeddata",ready,{once:true}); el.addEventListener("error",()=>status.textContent="UNSUPPORTED VIDEO CODEC",{once:true}); } else { el.onload=ready; el.onerror=()=>status.textContent="UNSUPPORTED IMAGE"; }
   }
   function applyCharacterLibrary(name){
     if(name!=="custom" && characterLibraries[name]) ui.charset.value=characterLibraries[name];
-    transport.textContent=name==="custom"?"CUSTOM CHARACTER SET":"CHARACTER LIBRARY LOADED";
+    transport.textContent=name==="custom"?"CUSTOM CHARACTER SET":"CHARACTER LIBRARY LOADED"; commitHistory();
   }
   function applyPalettePreset(name){
     if(name==="custom") return;
     const preset=palettePresets[name]; if(!preset) return;
     ui.colorMode.value=preset.mode; ui.paletteSize.value=preset.size; ui.background.value=preset.background; ui.background2.value=preset.background2; ui.backgroundStyle.value=preset.style;
     preset.colors?.forEach((color,index)=>paletteFields[index].value=color);
-    transport.textContent=name==="source"?"AUTO SOURCE COLOR ENABLED":"PALETTE LOADED";
+    transport.textContent=name==="source"?"AUTO SOURCE COLOR ENABLED":"PALETTE LOADED"; commitHistory();
   }
   function markPaletteCustom(){ if(ui.palettePreset.value!=="source") ui.palettePreset.value="custom"; }
   function applyPrompt(){ const p=ui.prompt.value.toLowerCase(); const set=(key,val)=>{ ui[key].value=val; };
@@ -230,7 +255,7 @@
     if(/auto.?color|source.?color/.test(p))set("colorMode","source");
     if(/red|vermilion/.test(p)){set("colorMode","mono");set("foreground","#ef4035");markPaletteCustom();} if(/blue|cobalt/.test(p)){set("colorMode","mono");set("foreground","#4169e1");markPaletteCustom();} if(/green|phosphor/.test(p)){set("colorMode","mono");set("foreground","#9dff68");markPaletteCustom();} if(/white|mono(chrome)?/.test(p)){set("colorMode","mono");set("foreground","#f5f5f5");markPaletteCustom();}
     if(/slow/.test(p))set("duration","7"); if(/fast|rapid/.test(p))set("duration","1.5"); if(/low fps|choppy|psx/.test(p))set("fps","12"); if(/crt|scanline/.test(p))set("scanlines","55"); if(/glitch|corrupt/.test(p))set("glitch","50"); if(/clean|minimal/.test(p)){set("glitch","0");set("scanlines","0");}
-    updateReadouts(); transport.textContent="PROMPT APPLIED";
+    updateReadouts(); transport.textContent="PROMPT APPLIED"; commitHistory();
   }
   function applyPreset(name){
     const set=(key,val)=>{ui[key].value=val;};
@@ -244,18 +269,53 @@
       terminal:()=>{set("mode","terminal");set("scanlines","45");set("glitch","22");},
       rain:()=>{set("mode","terminal");set("colorMode","mono");set("foreground","#ef4035");markPaletteCustom();set("effect","rain");set("effectPower","65");set("glitch","35");set("scanlines","45");}
     };
-    presets[name]?.(); state.started=performance.now(); state.playing=name!=="direct"; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"){ if(state.playing)state.media.play().catch(()=>{}); else state.media.pause(); } syncResolveAudio(); updateReadouts(); transport.textContent=name==="direct"?"STATIC PREVIEW":"BUILDING — WILL HOLD ON FINAL FRAME";
+    presets[name]?.(); state.started=performance.now(); state.playing=name!=="direct"; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"){ if(state.playing)state.media.play().catch(()=>{}); else state.media.pause(); } syncResolveAudio(); updateReadouts(); transport.textContent=name==="direct"?"STATIC PREVIEW":"BUILDING — WILL HOLD ON FINAL FRAME"; commitHistory();
   }
-  function restart(){ state.started=performance.now(); state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent=state.playing?"RESTARTED — BUILDING":"RESTARTED — PRESS PLAY"; }
+  function restart(){ state.started=performance.now(); state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent=state.playing?"RESTARTED — BUILDING":"RESTARTED — PRESS PLAY"; }
   function snapshot(){ const a=document.createElement("a");a.download="ascii-motion-frame.png";a.href=out.toDataURL("image/png");a.click(); }
+  function currentAsciiText(){
+    if(!state.imageReady) return "";
+    const t=state.completed?Number(ui.duration.value):state.playing?getTime():state.pausedElapsed, frame=sourceFrame(t); if(!frame) return "";
+    const data=frame.data, mode=ui.mode.value, lines=[];
+    for(let y=0;y<state.analyserH;y++){
+      let line="";
+      for(let x=0;x<state.analyserW;x++){
+        const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
+        if(ui.edges.checked || mode==="edge") { const right=x+1<state.analyserW?i+4:i, down=y+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
+        const shown=mode==="direct" || mode==="glyph-build" || revealFor(x,y,v,t,mode); if(!shown){ line+=" "; continue; }
+        line+=mode==="terminal"&&ui.glyphSource.value==="ramp"&&t/Number(ui.duration.value)<seed(x,y)*.9?("01/\\|[]{}<>+-")[Math.floor(seed(y,x+12)*12)]:glyph(v,x,y);
+      }
+      lines.push(line.replace(/\s+$/,""));
+    }
+    return lines.join("\n");
+  }
+  function generateAscii(){ const text=currentAsciiText(); if(!text){ transport.textContent="ATTACH A SOURCE FIRST"; return; } $("ascii-export").value=text; transport.textContent=`TEXT FRAME GENERATED — ${text.length.toLocaleString()} CHARACTERS`; }
+  async function copyAscii(){ const text=$("ascii-export").value||currentAsciiText(); if(!text){ transport.textContent="ATTACH A SOURCE FIRST"; return; } $("ascii-export").value=text; try{ await navigator.clipboard.writeText(text); transport.textContent="COPYABLE TEXT ART COPIED"; }catch{ const field=$("ascii-export"); field.focus(); field.select(); document.execCommand("copy"); transport.textContent="TEXT SELECTED / COPIED"; } }
   async function record(){ if(!state.imageReady||state.recording)return; if(!isAnimated()){ transport.textContent="CHOOSE A BUILD STYLE BEFORE EXPORTING VIDEO"; return; } if(!window.MediaRecorder){transport.textContent="MEDIARECORDER NOT AVAILABLE";return;} state.recording=true; state.playing=true; state.completed=false; $("record").classList.add("recording"); $("record").textContent="● RECORDING…"; restart();
     const stream=out.captureStream(Number(ui.fps.value)); let audioStream=null; if(ui.resolveSound.value!=="none"){ await algorithmicEngine(); audioStream=algoCapture?.stream; } audioStream?.getAudioTracks().forEach(track=>stream.addTrack(track)); const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"; const rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8_000_000}); const chunks=[];
     rec.ondataavailable=e=>e.data.size&&chunks.push(e.data); rec.onstop=()=>{ const blob=new Blob(chunks,{type});const a=document.createElement("a");a.download="ascii-motion-build.webm";a.href=URL.createObjectURL(blob);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);state.recording=false;$("record").classList.remove("recording");$("record").textContent="● EXPORT BUILD (WEBM)";transport.textContent="WEBM EXPORTED"; };
     rec.start(); setTimeout(()=>rec.stop(),Number(ui.duration.value)*1000);
   }
   fileInput.onchange=e=>{ load(e.target.files[0]); e.target.value=""; };
+  $("choose-file").onclick=()=>fileInput.click();
+  $("fit-view").onclick=()=>{ fitViewport(); transport.textContent="VIEW FIT"; };
+  $("undo").onclick=undo; $("redo").onclick=redo;
   ["dragenter","dragover"].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.add("dragging");})); ["dragleave","drop"].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.remove("dragging");})); drop.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
+  let panStart=null;
+  drop.addEventListener("pointerdown",e=>{
+    if(!state.imageReady || e.button!==0 || e.target.closest("button")) return;
+    panStart={pointerX:e.clientX,pointerY:e.clientY,viewX:state.viewport.x,viewY:state.viewport.y}; drop.setPointerCapture?.(e.pointerId); drop.classList.add("panning"); e.preventDefault();
+  });
+  drop.addEventListener("pointermove",e=>{
+    if(!panStart) return; state.viewport.x=panStart.viewX+(e.clientX-panStart.pointerX); state.viewport.y=panStart.viewY+(e.clientY-panStart.pointerY); applyViewport();
+  });
+  const finishPan=()=>{ if(!panStart) return; panStart=null; drop.classList.remove("panning"); commitHistory(); };
+  drop.addEventListener("pointerup",finishPan); drop.addEventListener("pointercancel",finishPan);
+  drop.addEventListener("wheel",e=>{
+    if(!state.imageReady || e.target.closest("button")) return; e.preventDefault(); const before=state.viewport.zoom, factor=e.deltaY<0?1.12:1/1.12; state.viewport.zoom=Math.max(.25,Math.min(8,before*factor)); if(before===state.viewport.zoom) return; applyViewport(); clearTimeout(viewportCommitTimer); viewportCommitTimer=setTimeout(commitHistory,220);
+  },{passive:false});
   $("apply-prompt").onclick=applyPrompt; $("restart").onclick=restart; $("snapshot").onclick=snapshot; $("record").onclick=record;
+  $("generate-ascii").onclick=generateAscii; $("copy-ascii").onclick=copyAscii;
   document.querySelectorAll("[data-preset]").forEach(button=>button.onclick=()=>applyPreset(button.dataset.preset));
   document.querySelectorAll("[data-prompt]").forEach(button=>button.onclick=()=>{ui.prompt.value=button.dataset.prompt;applyPrompt();});
   ui.charsetPreset.onchange=()=>applyCharacterLibrary(ui.charsetPreset.value);
@@ -263,10 +323,10 @@
   ui.palettePreset.onchange=()=>applyPalettePreset(ui.palettePreset.value);
   [ui.colorMode,ui.paletteSize,ui.backgroundStyle,ui.foreground,ui.palette2,ui.palette3,ui.palette4,ui.palette5,ui.background,ui.background2].forEach(control=>control.addEventListener("input",markPaletteCustom));
   [ui.size,ui.aspectRatio,ui.outputResolution,ui.customResolution,ui.outputScale].forEach(control=>control.addEventListener("input",()=>{ state.lastRender=0; }));
-  ui.mode.onchange=()=>{ state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; if(ui.mode.value==="direct"){ state.playing=false; stopResolveAudio(); $("play").textContent="PLAY"; transport.textContent="STATIC PREVIEW"; } else transport.textContent="STYLE SET — PRESS PLAY"; };
+  ui.mode.onchange=()=>{ state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; if(ui.mode.value==="direct"){ state.playing=false; stopResolveAudio(); $("play").textContent="PLAY"; transport.textContent="STATIC PREVIEW"; } else transport.textContent="STYLE SET — PRESS PLAY"; };
   $("play").onclick=()=>{
     if(!isAnimated()){ state.playing=false; state.completed=false; state.pausedElapsed=0; $("play").textContent="PLAY"; stopResolveAudio(); transport.textContent="STATIC PREVIEW — CHOOSE A BUILD STYLE TO ANIMATE"; return; }
-    if(state.completed){ state.completed=false; state.pausedElapsed=0; state.started=performance.now(); state.playing=true; state.lastRender=0; state.lastSoundStep=-1; }
+    if(state.completed){ state.completed=false; state.pausedElapsed=0; state.started=performance.now(); state.playing=true; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; }
     else if(state.playing){ state.pausedElapsed+=(performance.now()-state.started)/1000; state.playing=false; }
     else { state.started=performance.now(); state.playing=true; }
     $("play").textContent=state.playing?"PAUSE":"PLAY"; transport.textContent=state.playing?"BUILDING":"PAUSED";
@@ -275,6 +335,18 @@
   ui.resolveSound.onchange=()=>syncResolveAudio();
   ui.audioLevel.oninput=()=>{ if(state.playing&&ui.resolveSound.value==="algorithmic") syncResolveAudio(); };
   ui.duration.onchange=()=>{ if(state.playing)syncResolveAudio(); };
+  const updateTextCount=()=>$("text-count").textContent=`${ui.customText.value.length.toLocaleString()} CHARACTERS`;
+  ui.customText.oninput=()=>{ updateTextCount(); state.lastRender=0; };
+  $("import-text").onclick=()=>textFileInput.click();
+  textFileInput.onchange=async e=>{ const file=e.target.files[0]; e.target.value=""; if(!file) return; try{ ui.customText.value=await file.text(); updateTextCount(); state.lastRender=0; commitHistory(); transport.textContent=`TEXT IMPORTED — ${ui.customText.value.length.toLocaleString()} CHARACTERS`; }catch{ transport.textContent="TEXT IMPORT FAILED"; } };
+  $("clear-text").onclick=()=>{ ui.customText.value=""; updateTextCount(); state.lastRender=0; commitHistory(); transport.textContent="TEXT CLEARED"; };
+  document.querySelectorAll("#controls input, #controls select, #controls textarea").forEach(control=>{ if(control.type!=="file") control.addEventListener("change",commitHistory); });
+  window.addEventListener("keydown",e=>{
+    if(e.target.matches("input, textarea, select")) return;
+    if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==="z"){ e.preventDefault(); e.shiftKey?redo():undo(); }
+    if(e.altKey&&e.key==="ArrowLeft"){ e.preventDefault(); undo(); }
+    if(e.altKey&&e.key==="ArrowRight"){ e.preventDefault(); redo(); }
+  });
   $("toggle-ui").onclick=()=>{document.body.classList.toggle("ui-hidden");$("toggle-ui").textContent=document.body.classList.contains("ui-hidden")?"SHOW UI":"HIDE UI";};
-  render();
+  updateTextCount(); resetHistory(); applyViewport(); render();
 })();
