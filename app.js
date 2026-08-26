@@ -180,7 +180,7 @@
   function patternChars(){ return ui.pattern.value==="custom"?(ui.patternTile.value||"░▒▓█"):(proceduralPatterns[ui.pattern.value]||""); }
   function patternGlyph(x,y,bright){ const chars=patternChars(); if(!chars) return ""; return chars[Math.abs(Math.floor(x*1.7+y*2.3+bright*7))%chars.length]; }
   function drawPattern(w,h,cell,cellH,alpha=1){ const chars=patternChars(); if(!chars) return; ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=ui.foreground.value;ctx.font=`${Math.max(5,cell)}px monospace`;ctx.textBaseline="top"; for(let y=0;y<h;y+=cellH)for(let x=0;x<w;x+=cell)ctx.fillText(patternGlyph(x/cell,y/cellH,0),x,y);ctx.restore(); }
-  function glyph(bright,x=0,y=0){
+  function glyph(bright,x=0,y=0,textFlowIndex=null){
     const p=Math.max(0,Math.min(1,bright));
     if(ui.glyphSource.value==="text"){
       const ramp=ui.charset.value || characterLibraries.dense;
@@ -192,7 +192,12 @@
         const lines=text.split("\n").filter(line=>line.length); const line=(lines.length?lines[y%lines.length]:text) || text;
         return line[Math.floor(x/repeat)%line.length] || " ";
       }
-      let index=Math.floor((x+y*state.analyserW)/repeat)%text.length;
+      // Flow is deliberately counted through *visible* cells, not every cell
+      // in the source rectangle. That makes the first written character land
+      // at the first filled cell at the top of the subject, then read naturally
+      // through its silhouette instead of consuming the quote in black space.
+      let index=textFlowIndex===null?Math.floor((x+y*state.analyserW)/repeat):Math.floor(textFlowIndex/repeat);
+      index%=text.length;
       if(ui.textLayout.value==="vertical") index=Math.floor((y+x*state.analyserH)/repeat)%text.length;
       if(ui.textLayout.value==="spiral") index=Math.floor((Math.hypot(x-state.analyserW/2,y-state.analyserH/2)*4+Math.atan2(y-state.analyserH/2,x-state.analyserW/2)*12)/repeat)%text.length;
       const textChar=ui.textLayout.value==="reverse"?text[text.length-1-index]:text[(index+text.length)%text.length] || " ";
@@ -201,9 +206,9 @@
     const chars=ui.charset.value || characterLibraries.dense;
     return chars[Math.min(chars.length-1,Math.floor(p*(chars.length-1)))];
   }
-  function renderGlyph(bright,x,y,time,mode){
+  function renderGlyph(bright,x,y,time,mode,textFlowIndex=null){
     const progress=Math.max(0,Math.min(1,time/Number(ui.duration.value)));
-    let char=glyph(bright,x,y);
+    let char=glyph(bright,x,y,textFlowIndex);
     if(mode==="corruption-repair" && progress<.985){
       const corruption="@#%?01/\\|[]{}<>"; const repair=Math.max(0,Math.min(1,(progress-seed(x,y)*.16)/.84));
       if(seed(x+9,y+17)>repair) char=corruption[Math.floor(seed(y+31,x+3)*corruption.length)];
@@ -324,12 +329,13 @@
     $("fps-readout").textContent=`${ui.fps.value} FPS`;
     fillBackground(w,h); ctx.font=`${Math.max(1,cellH)}px monospace`; ctx.textBaseline="top";
     const mode=ui.mode.value, data=frame.data, glitch=Number(ui.glitch.value)/100;
-    let visibleGlyphs=0, darkAdded=0, brightAdded=0; const liveLines=ui.previewEngine.value==="text"?[]:null;
+    let visibleGlyphs=0, darkAdded=0, brightAdded=0, textFlowIndex=0; const liveLines=ui.previewEngine.value==="text"?[]:null;
     for(let y=0;y<state.analyserH;y++) { let liveLine=""; for(let x=0;x<state.analyserW;x++){
       const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
       if(ui.edges.checked || ["edge","edge-skeleton"].includes(mode)) { const right=x+1<state.analyserW?i+4:i, down=y+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
       let shown=mode==="direct" || mode==="glyph-build" || mode==="coarse-mosaic" || mode==="iterative-draft" || revealFor(x,y,v,t,mode); if(!shown){if(liveLines)liveLine+=" ";continue;}
-      let char=renderGlyph(v,x,y,t,mode); if(mode==="terminal" && ui.glyphSource.value==="ramp" && t/Number(ui.duration.value)<seed(x,y)*.9) char=("01/\\|[]{}<>+-")[Math.floor(seed(y,x+12)*12)];
+      const useTextFlow=ui.glyphSource.value==="text"&&ui.textLayout.value==="flow"&&v>=.07;
+      let char=renderGlyph(v,x,y,t,mode,useTextFlow?textFlowIndex:null); if(useTextFlow)textFlowIndex++; if(mode==="terminal" && ui.glyphSource.value==="ramp" && t/Number(ui.duration.value)<seed(x,y)*.9) char=("01/\\|[]{}<>+-")[Math.floor(seed(y,x+12)*12)];
       const jitter=glitch>0&&seed(x,Math.floor(t*ui.fps.value))<glitch*.14 ? Math.round((seed(y,x)*2-1)*cell*2) : 0;
       if(liveLines)liveLine+=char; if(char!==" "){ visibleGlyphs++; if(v<.28)darkAdded++; if(v>.72)brightAdded++; }
       ctx.globalAlpha=ui.glyphSource.value==="text"?Math.max(.08,Math.pow(v,.72)):1; ctx.fillStyle=glyphColor(v,r,g,b); ctx.fillText(char,x*cell+jitter,y*cellH);
@@ -401,14 +407,15 @@
     if(state.textMode) return readTextCanvas();
     if(!state.imageReady) return "";
     const t=state.completed?Number(ui.duration.value):state.playing?getTime():state.pausedElapsed, frame=sourceFrame(t); if(!frame) return "";
-    const data=frame.data, mode=ui.mode.value, lines=[], requested=ui.asciiColumns.value==="source"?state.analyserW:Number(ui.asciiColumns.value), exportW=Math.max(1,requested), exportH=Math.max(1,Math.round(state.analyserH*exportW/state.analyserW));
+    const data=frame.data, mode=ui.mode.value, lines=[], requested=ui.asciiColumns.value==="source"?state.analyserW:Number(ui.asciiColumns.value), exportW=Math.max(1,requested), exportH=Math.max(1,Math.round(state.analyserH*exportW/state.analyserW)); let textFlowIndex=0;
     for(let y=0;y<exportH;y++){
       let line="";
       for(let x=0;x<exportW;x++){
         const sx=Math.min(state.analyserW-1,Math.floor(x/exportW*state.analyserW)), sy=Math.min(state.analyserH-1,Math.floor(y/exportH*state.analyserH)), i=(sy*state.analyserW+sx)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
         if(ui.edges.checked || ["edge","edge-skeleton"].includes(mode)) { const right=sx+1<state.analyserW?i+4:i, down=sy+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
         const shown=mode==="direct" || ["glyph-build","coarse-mosaic","iterative-draft"].includes(mode) || revealFor(sx,sy,v,t,mode); if(!shown){ line+=" "; continue; }
-        line+=mode==="terminal"&&ui.glyphSource.value==="ramp"&&t/Number(ui.duration.value)<seed(sx,sy)*.9?("01/\\|[]{}<>+-")[Math.floor(seed(sy,sx+12)*12)]:renderGlyph(v,sx,sy,t,mode);
+        const useTextFlow=ui.glyphSource.value==="text"&&ui.textLayout.value==="flow"&&v>=.07;
+        line+=mode==="terminal"&&ui.glyphSource.value==="ramp"&&t/Number(ui.duration.value)<seed(sx,sy)*.9?("01/\\|[]{}<>+-")[Math.floor(seed(sy,sx+12)*12)]:renderGlyph(v,sx,sy,t,mode,useTextFlow?textFlowIndex:null); if(useTextFlow)textFlowIndex++;
       }
       lines.push(line.replace(/\s+$/,""));
     }

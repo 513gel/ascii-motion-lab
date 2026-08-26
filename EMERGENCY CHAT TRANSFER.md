@@ -134,7 +134,11 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   blend, weighted bold words, local find/replace, and a browser-local reusable
   text preset. Pasting, importing, or loading non-empty text automatically
   selects **TEXT FOUNDATION**; users no longer need to separately switch the
-  Content Mode dropdown away from Brightness Ramp.
+  Content Mode dropdown away from Brightness Ramp. Default **Top → Bottom
+  Reading Flow** advances the source only through filled/visible image cells,
+  so the first character begins at the top of a subject and the quote remains
+  readable through its silhouette rather than being consumed by the black
+  background.
 - Copyable text output has a source/40/80/120-column selector plus optional
   box border and direct .txt, HTML `<pre>`, Markdown, and ANSI-text downloads.
 - `13thoni-site` was cloned fresh on 2026-08-26, GLYPHSHIFT was copied into its
