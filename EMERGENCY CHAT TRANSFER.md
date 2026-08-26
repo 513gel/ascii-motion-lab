@@ -103,8 +103,9 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   box border and direct .txt, HTML `<pre>`, Markdown, and ANSI-text downloads.
 - `13thoni-site` was cloned fresh on 2026-08-26, GLYPHSHIFT was copied into its
   `public/GLYPHSHIFT` folder, its terminal node was changed to an online link,
-  and `npm run build` passed locally after `npm ci`. Pushing `main` deploys it
-  only if the existing Cloudflare/GitHub production hookup is active.
+  and `npm run build` passed locally after `npm ci`. Commit `bd4295b` was pushed
+  and production verification returned HTTP 200 with GLYPHSHIFT controls at
+  `https://13thoni.com/GLYPHSHIFT/`; the home terminal also contains the link.
 - Animated presets are now build-and-hold: once the duration completes, the
   renderer freezes on the fully resolved final frame, stops resolve audio,
   pauses any video source, and changes Play to Replay. Restart resets the
