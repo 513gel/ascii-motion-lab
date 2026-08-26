@@ -40,6 +40,13 @@ exports when the browser exposes audio capture. The cue was derived from
 Johnmode's CC0 Freesound sound 826671; source page:
 https://freesound.org/people/Johnmode/sounds/826671/
 
+## Resolve Sound Lab
+
+`sound-lab.html` is a small phone-friendly audition board containing 20
+browser-synthesized candidates for character arrivals. It has no samples or
+external dependencies; choose a sound code there before integrating a
+generated sound engine into the main converter.
+
 ## Run locally
 
 ```powershell

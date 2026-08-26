@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#050505" />
+    <title>ASCII MOTION LAB — Resolve Sound Audition</title>
+    <style>
+      :root { --bg:#050505; --panel:#0d0d0d; --line:#303030; --ink:#f5f5f5; --muted:#979797; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; background:radial-gradient(circle at 50% -20%,#252525 0,#050505 42%); color:var(--ink); font:12px Consolas,"Courier New",monospace; letter-spacing:.045em; }
+      header { position:sticky; top:0; z-index:5; display:flex; justify-content:space-between; align-items:center; min-height:48px; padding:0 16px; border-bottom:1px solid var(--line); background:rgba(5,5,5,.94); backdrop-filter:blur(10px); }
+      .brand { font-weight:900; font-size:14px; }.brand span { color:#777; margin:0 3px; }.back { color:var(--muted); font-size:9px; text-decoration:none; border:1px solid var(--line); padding:7px 8px; }
+      main { width:min(760px,100%); margin:auto; padding:20px 14px 40px; }
+      .intro { border:1px solid var(--line); background:linear-gradient(135deg,#111,#090909); padding:16px; margin-bottom:12px; }
+      h1 { margin:0 0 8px; font-size:20px; letter-spacing:.09em; } p { color:var(--muted); margin:0; line-height:1.55; }
+      .now { position:sticky; top:48px; z-index:4; display:flex; align-items:center; gap:10px; margin:0 -14px 14px; padding:10px 14px; border-bottom:1px solid var(--line); background:#090909; }
+      #status { flex:1; color:#ddd; font-size:10px; } #status b { color:#fff; }.stop { min-height:36px; border:1px solid var(--line); background:#111; color:#eee; font:inherit; font-weight:700; letter-spacing:.06em; padding:0 12px; }
+      .category { border:1px solid var(--line); background:var(--panel); margin:12px 0; }.category h2 { display:flex; justify-content:space-between; margin:0; padding:10px 11px; border-bottom:1px solid var(--line); font-size:10px; letter-spacing:.1em; }.category h2 small { color:#777; font-weight:400; }
+      .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; padding:8px; }.sound { min-height:86px; text-align:left; border:1px solid #363636; background:#080808; color:#eee; padding:9px; font:inherit; cursor:pointer; }.sound:hover,.sound:focus-visible { border-color:#f5f5f5; outline:0; }.sound.active { background:#f5f5f5; color:#050505; border-color:#f5f5f5; }.sound code,.sound span { display:block; }.sound code { color:#898989; font-size:8px; margin-bottom:8px; }.sound.active code { color:#555; }.sound span { font-size:10px; font-weight:700; line-height:1.2; }.sound small { display:block; margin-top:5px; color:#858585; font-size:8px; letter-spacing:0; line-height:1.25; }.sound.active small { color:#444; }
+      .note { margin-top:16px; font-size:9px; text-align:center; }
+      @media (max-width:560px) { header { padding:0 12px; }.brand { font-size:12px; } main { padding:14px 10px 28px; }.intro { padding:14px; } h1 { font-size:17px; }.now { margin:0 -10px 12px; padding:9px 10px; }.grid { grid-template-columns:repeat(2,1fr); gap:8px; }.sound { min-height:94px; padding:11px; }.category { margin:10px 0; } }
+    </style>
+  </head>
+  <body>
+    <header><div class="brand">ASCII<span>//</span>MOTION <small>RESOLVE SOUND LAB</small></div><a class="back" href="./">BACK TO LAB</a></header>
+    <main>
+      <section class="intro">
+        <h1>20 RESOLVE SOUNDS</h1>
+        <p>Tap a tile to audition it. These are synthesized locally in your browser—no samples, no uploads. Pick the code/name that feels right for ASCII characters moving into place and I’ll turn that sound DNA into the actual generator.</p>
+      </section>
+      <div class="now"><div id="status"><b>READY</b> // TAP A SOUND</div><button class="stop" id="stop" type="button">STOP</button></div>
+      <section class="category"><h2>01 // DETAIL TICKS <small>tiny glyph arrivals</small></h2><div class="grid" id="detail"></div></section>
+      <section class="category"><h2>02 // ORGANIC VOICES <small>formant / creature</small></h2><div class="grid" id="organic"></div></section>
+      <section class="category"><h2>03 // DARK SIGNAL <small>old hardware ghosts</small></h2><div class="grid" id="signal"></div></section>
+      <section class="category"><h2>04 // FULL RESOLVES <small>short arrival sequences</small></h2><div class="grid" id="resolve"></div></section>
+      <p class="note">Headphones help. Sound is intentionally dry so we can decide on the core voice before adding room/reverb/fuckery.</p>
+    </main>
+    <script>
+      const sounds = [
+        ["01","PIXEL TICK","detail","bright micro click","pixelTick"], ["02","GLASS INSECT","detail","three brittle chirps","glassInsect"], ["03","DUST FLUTTER","detail","soft granular flits","dustFlutter"], ["04","MAGNETIC CLICK","detail","weighted metal snap","magneticClick"],
+        ["05","FORMANT SPARK","organic","small vowel creature","formantSpark"], ["06","RUBBER SQUELCH","organic","elastic filter voice","rubberSquelch"], ["07","BUBBLE BYTE","organic","rounded rising blop","bubbleByte"], ["08","DIGITAL FROG","organic","wet synthetic croak","digitalFrog"],
+        ["09","DATA CRICKET","signal","two-tone nervous chirp","dataCricket"], ["10","WIRE SQUEAK","signal","thin unstable whine","wireSqueak"], ["11","MODEM WISP","signal","slow spectral glide","modemWisp"], ["12","RADIO GHOST","signal","filtered static vowel","radioGhost"],
+        ["13","SCANLINE SWEEP","resolve","ascending image pass","scanlineSweep"], ["14","RISING SWARM","resolve","many tiny arrivals","risingSwarm"], ["15","BROKEN CHOIR","resolve","distant formant stack","brokenChoir"], ["16","SIGNAL BLOOM","resolve","soft harmonic opening","signalBloom"],
+        ["17","RED RAIN","resolve","angular terminal drizzle","redRain"], ["18","VOID BREATH","resolve","low living hardware","voidBreath"], ["19","SYNTHETIC MOUTH","resolve","talking machine stutter","syntheticMouth"], ["20","CREATURE RESOLVE","resolve","full bio-digital arrival","creatureResolve"]
+      ];
+      for (const [id,name,group,desc,fn] of sounds) document.getElementById(group).insertAdjacentHTML("beforeend", `<button class="sound" type="button" data-fn="${fn}" data-id="${id}" data-name="${name}"><code>${id} //</code><span>${name}</span><small>${desc}</small></button>`);
+
+      let audio, master, active=[];
+      function engine(){ if(!audio){ audio=new (window.AudioContext||window.webkitAudioContext)(); master=audio.createGain(); master.gain.value=.58; master.connect(audio.destination); } return audio.resume(); }
+      function track(...nodes){ active.push(...nodes); return nodes; }
+      function stop(){ active.forEach(node=>{ try { node.stop?.(); node.disconnect?.(); } catch {} }); active=[]; document.querySelectorAll(".sound").forEach(b=>b.classList.remove("active")); document.getElementById("status").innerHTML="<b>READY</b> // TAP A SOUND"; }
+      function gainEnv(output,start,duration,level=.22,attack=.01){ const gain=audio.createGain(); gain.gain.setValueAtTime(.0001,start); gain.gain.linearRampToValueAtTime(level,start+attack); gain.gain.exponentialRampToValueAtTime(.0001,start+duration); output.connect(gain); gain.connect(master); track(gain); return gain; }
+      function tone(type,from,to,start,duration,level=.22,opts={}){ const osc=audio.createOscillator(), output=audio.createGain(); osc.type=type; osc.frequency.setValueAtTime(Math.max(1,from),start); osc.frequency.exponentialRampToValueAtTime(Math.max(1,to),start+duration); let tail=output; if(opts.filter){ const f=audio.createBiquadFilter(); f.type=opts.filter.type||"bandpass"; f.frequency.setValueAtTime(opts.filter.from||1000,start); f.frequency.exponentialRampToValueAtTime(opts.filter.to||opts.filter.from||1000,start+duration); f.Q.value=opts.filter.q||5; output.connect(f); tail=f; track(f); } if(opts.pan!==undefined){ const p=audio.createStereoPanner(); p.pan.value=opts.pan; tail.connect(p); tail=p; track(p); } gainEnv(tail,start,duration,level,opts.attack||.01); osc.connect(output); osc.start(start); osc.stop(start+duration+.03); track(osc,output); return osc; }
+      function noise(start,duration,level=.12,opts={}){ const buffer=audio.createBuffer(1,Math.max(1,Math.ceil(audio.sampleRate*duration)),audio.sampleRate), data=buffer.getChannelData(0); let seed=opts.seed||17; for(let i=0;i<data.length;i++){ seed=(seed*16807)%2147483647; data[i]=((seed/2147483647)*2-1)*(1-i/data.length*.45); } const src=audio.createBufferSource(), output=audio.createGain(); src.buffer=buffer; let tail=output; if(opts.filter){ const f=audio.createBiquadFilter(); f.type=opts.filter.type||"highpass"; f.frequency.value=opts.filter.frequency||1500; f.Q.value=opts.filter.q||1; output.connect(f); tail=f; track(f); } gainEnv(tail,start,duration,level,opts.attack||.002); src.connect(output); src.start(start); src.stop(start+duration+.03); track(src,output); }
+      function vowel(start,duration,base,vowels=[700,1250,2500],level=.13){ const osc=audio.createOscillator(); osc.type="sawtooth"; osc.frequency.setValueAtTime(base,start); osc.frequency.exponentialRampToValueAtTime(base*.82,start+duration); for(const freq of vowels){ const f=audio.createBiquadFilter(), g=audio.createGain(); f.type="bandpass"; f.frequency.value=freq; f.Q.value=8; g.gain.value=.34; osc.connect(f); f.connect(g); gainEnv(g,start,duration,level,.025); track(f,g); } osc.start(start); osc.stop(start+duration+.04); track(osc); }
+      function ping(start,freq,dur=.1,level=.14){ tone("sine",freq,freq*.55,start,dur,level,{attack:.002}); tone("sine",freq*2.01,freq*1.12,start,dur*.72,level*.25,{attack:.002}); }
+      const recipes={
+        pixelTick(t){ ping(t,1450,.075,.16); noise(t,.035,.05,{filter:{frequency:3900},seed:2}); },
+        glassInsect(t){ [0,.075,.16].forEach((d,i)=>tone("triangle",[960,1470,1220][i],[1540,980,1780][i],t+d,.075,.13,{attack:.003,pan:(i-1)*.3})); },
+        dustFlutter(t){ [0,.045,.1,.16,.23].forEach((d,i)=>noise(t+d,.06,.045,{filter:{frequency:1800+i*340},seed:i+18})); },
+        magneticClick(t){ noise(t,.12,.18,{filter:{type:"bandpass",frequency:780,q:11},seed:8}); tone("sine",210,82,t,.14,.11,{attack:.002}); },
+        formantSpark(t){ vowel(t,.32,270,[500,1700,2500],.12); tone("sine",720,390,t+.08,.2,.07,{attack:.02}); },
+        rubberSquelch(t){ tone("sawtooth",105,360,t,.32,.16,{filter:{from:220,to:1800,q:11},attack:.012}); tone("sine",92,138,t,.38,.11,{attack:.01}); },
+        bubbleByte(t){ [0,.13,.27].forEach((d,i)=>tone("sine",[160,205,250][i],[340,370,470][i],t+d,.16,.16,{attack:.006,pan:(i-1)*.2})); },
+        digitalFrog(t){ vowel(t,.22,95,[420,880,1750],.12); tone("square",138,78,t+.08,.18,.06,{filter:{from:600,to:280,q:7}}); },
+        dataCricket(t){ for(let i=0;i<7;i++) ping(t+i*.09,i%2?1720:1240,.05,.08); },
+        wireSqueak(t){ tone("square",2500,540,t,.42,.08,{filter:{from:3300,to:800,q:9},attack:.004}); tone("sine",2510,555,t,.42,.035,{attack:.004}); },
+        modemWisp(t){ tone("sine",180,1480,t,.8,.12,{filter:{from:450,to:1900,q:4},attack:.08}); tone("triangle",710,240,t,.78,.06,{attack:.08,pan:.35}); },
+        radioGhost(t){ noise(t,.62,.08,{filter:{type:"bandpass",frequency:1050,q:5},seed:99,attack:.04}); vowel(t+.08,.5,132,[500,1450,2380],.07); },
+        scanlineSweep(t){ noise(t,.65,.11,{filter:{type:"bandpass",frequency:900,q:3},seed:31,attack:.02}); tone("sine",120,1260,t,.66,.13,{attack:.02}); },
+        risingSwarm(t){ for(let i=0;i<10;i++) tone("triangle",280+i*83,430+i*128,t+i*.055,.13,.055,{attack:.006,pan:(i%4-1.5)/2}); },
+        brokenChoir(t){ vowel(t,.72,98,[410,780,2400],.08); vowel(t+.08,.64,147,[530,1260,2300],.07); vowel(t+.15,.54,204,[680,1500,2600],.06); },
+        signalBloom(t){ [220,330,440,660].forEach((f,i)=>ping(t+i*.035,f,.48-i*.04,.08)); },
+        redRain(t){ for(let i=0;i<11;i++){ const d=i*.055; noise(t+d,.07,.055,{filter:{frequency:1400+i*160},seed:i+44}); tone("square",850+i*75,350+i*18,t+d,.065,.035,{attack:.002}); } },
+        voidBreath(t){ noise(t,.85,.1,{filter:{type:"lowpass",frequency:500,q:2},seed:71,attack:.12}); tone("sine",56,74,t,.8,.13,{attack:.1}); vowel(t+.16,.56,82,[340,700,1540],.05); },
+        syntheticMouth(t){ [0,.12,.25,.37].forEach((d,i)=>{ vowel(t+d,.16,150+i*42,i%2?[350,1200,2350]:[620,1600,2700],.07); }); },
+        creatureResolve(t){ recipes.voidBreath(t); [0,.13,.28,.43,.61].forEach((d,i)=>{ tone("triangle",150+i*92,300+i*128,t+d,.16,.075,{filter:{from:500+i*150,to:1300+i*130,q:7},attack:.012,pan:(i-2)*.18}); }); vowel(t+.25,.55,126,[460,1380,2500],.08); noise(t+.5,.32,.06,{filter:{frequency:2100},seed:120}); }
+      };
+      async function play(button){ await engine(); stop(); const id=button.dataset.id,name=button.dataset.name; button.classList.add("active"); document.getElementById("status").innerHTML=`<b>PLAYING ${id}</b> // ${name}`; recipes[button.dataset.fn](audio.currentTime+.03); }
+      document.querySelectorAll(".sound").forEach(button=>button.addEventListener("click",()=>play(button))); document.getElementById("stop").addEventListener("click",stop);
+    </script>
+  </body>
+</html>
