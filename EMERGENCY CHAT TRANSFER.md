@@ -207,6 +207,9 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   policy).
 - Git is configured **locally for this repository only** as `513gel` using
   `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
+- Latest direct-size update: source commit `c100094`; deployed 13thoni commit
+  `fda30e7`. Both passed JavaScript syntax, diff, DOM lookup, and production
+  site build checks before push.
 - Browser-verified before the newest output/audio rework: local image load, Oni
   palette/radial background, katakana library, pasted-text weave, Text Repeat,
   and Auto Source all worked without console errors. Sticky mobile preview was
