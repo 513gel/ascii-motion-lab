@@ -82,7 +82,9 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   a dense frame can add thousands at once; each audible event is a real
   rendering batch.
 - Branding is now **GLYPHSHIFT**. The static app ships an original SVG icon
-  suite (favicon, app mark, and maskable mark) plus a web manifest.
+  suite (favicon, app mark, and maskable mark) plus a web manifest. The prior
+  M monogram was replaced with a blocky **G** plus shifting cursor mark and all
+  active icon references now use `glyphshift-*` assets.
 - The build selector now includes Line Printer, Glyph Scatter, Threshold Flood,
   Coarse Mosaic, Horizontal Sync, Vertical Terminal Rain, Edge Skeleton, Word
   Reveal, Compression Decode, and Corruption Repair, while retaining the older
