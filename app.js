@@ -8,7 +8,7 @@
     colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"),
     effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), resolveAudio:$("resolve-audio"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), prompt:$("prompt")
   };
-  const state = { media:null, fileURL:null, sourceKind:null, playing:false, started:performance.now(), imageReady:false, recording:false, analyserW:0, analyserH:0 };
+  const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), imageReady:false, recording:false, analyserW:0, analyserH:0 };
   const outputNames={size:"cell-size-out",duration:"duration-out",textScale:"text-scale-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",outputScale:"output-scale-out",audioLevel:"audio-level-out"};
   const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:key==="outputScale"?`${ui[key].value}%`:ui[key].value);
   document.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",updateReadouts)); updateReadouts();
@@ -49,7 +49,15 @@
   function seed(x,y){ let n=(x*374761393+y*668265263)>>>0; n=(n^(n>>>13))*1274126177; return ((n^(n>>>16))>>>0)/4294967296; }
   function mediaDimensions(){ if(!state.media) return [960,540]; return state.sourceKind==="video"?[state.media.videoWidth||960,state.media.videoHeight||540]:[state.media.naturalWidth||960,state.media.naturalHeight||540]; }
   function fit(w,h,maxW,maxH){ const r=Math.min(maxW/w,maxH/h); return [Math.max(1,Math.floor(w*r)),Math.max(1,Math.floor(h*r))]; }
-  function getTime(){ const seconds=Number(ui.duration.value); return state.playing ? ((performance.now()-state.started)/1000)%seconds : 0; }
+  function finishAnimation(){
+    if(state.completed) return; state.playing=false; state.completed=true; $("play").textContent="REPLAY";
+    if(state.sourceKind==="video") state.media.pause(); stopResolveAudio(); transport.textContent="BUILD COMPLETE — FINAL FRAME HELD";
+  }
+  function getTime(){
+    const seconds=Number(ui.duration.value); if(!state.playing) return state.completed?seconds:0;
+    const elapsed=(performance.now()-state.started)/1000; if(isAnimated()&&elapsed>=seconds){ finishAnimation(); return seconds; }
+    return elapsed;
+  }
   const characterLibraries={
     dense:" .,:;irsXA253hMHGS#9B&@",
     english:" ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
@@ -148,10 +156,10 @@
     if(!file) return; if(state.fileURL) URL.revokeObjectURL(state.fileURL); state.fileURL=URL.createObjectURL(file); state.imageReady=false;
     // Every new source begins as an inspectable still, regardless of any form
     // values the browser restored from a previous session.
-    ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; updateReadouts(); state.playing=false; $("play").textContent="PLAY"; stopResolveAudio();
+    ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; updateReadouts(); state.playing=false; state.completed=false; $("play").textContent="PLAY"; stopResolveAudio();
     const isVideo=file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv)$/i.test(file.name); const el=isVideo?document.createElement("video"):new Image();
     state.media=el; state.sourceKind=isVideo?"video":"image"; el.src=state.fileURL; status.textContent=`LOADING // ${file.name.toUpperCase()}`;
-    const ready=()=>{ state.imageReady=true; empty.hidden=true; state.playing=false; $("play").textContent="PLAY"; state.started=performance.now(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="STATIC PREVIEW — PICK A STYLE TO ANIMATE"; if(isVideo){el.loop=true;el.muted=true;el.pause();el.currentTime=0;} };
+    const ready=()=>{ state.imageReady=true; empty.hidden=true; state.playing=false; state.completed=false; $("play").textContent="PLAY"; state.started=performance.now(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="STATIC PREVIEW — PICK A STYLE TO ANIMATE"; if(isVideo){el.loop=true;el.muted=true;el.pause();el.currentTime=0;} };
     if(isVideo){ el.addEventListener("loadeddata",ready,{once:true}); el.addEventListener("error",()=>status.textContent="UNSUPPORTED VIDEO CODEC",{once:true}); } else { el.onload=ready; el.onerror=()=>status.textContent="UNSUPPORTED IMAGE"; }
   }
   function applyCharacterLibrary(name){
@@ -185,9 +193,9 @@
       terminal:()=>{set("mode","terminal");set("scanlines","45");set("glitch","22");},
       rain:()=>{set("mode","terminal");set("colorMode","mono");set("foreground","#ef4035");markPaletteCustom();set("effect","rain");set("effectPower","65");set("glitch","35");set("scanlines","45");}
     };
-    presets[name]?.(); state.started=performance.now(); state.playing=name!=="direct"; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"){ if(state.playing)state.media.play().catch(()=>{}); else state.media.pause(); } syncResolveAudio(); updateReadouts(); transport.textContent=name==="direct"?"STATIC PREVIEW":"ANIMATION PRESET";
+    presets[name]?.(); state.started=performance.now(); state.playing=name!=="direct"; state.completed=false; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"){ if(state.playing)state.media.play().catch(()=>{}); else state.media.pause(); } syncResolveAudio(); updateReadouts(); transport.textContent=name==="direct"?"STATIC PREVIEW":"BUILDING — WILL HOLD ON FINAL FRAME";
   }
-  function restart(){ state.started=performance.now(); if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent="RESTARTED"; }
+  function restart(){ state.started=performance.now(); state.completed=false; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent=state.playing?"RESTARTED — BUILDING":"RESTARTED — PRESS PLAY"; }
   function snapshot(){ const a=document.createElement("a");a.download="ascii-motion-frame.png";a.href=out.toDataURL("image/png");a.click(); }
   async function record(){ if(!state.imageReady||state.recording)return; if(!window.MediaRecorder){transport.textContent="MEDIARECORDER NOT AVAILABLE";return;} state.recording=true; $("record").classList.add("recording"); $("record").textContent="● RECORDING…"; restart();
     const stream=out.captureStream(Number(ui.fps.value)); let audioStream=null; if(ui.resolveAudio.checked){ if(ui.resolveSound.value==="algorithmic"){ await algorithmicEngine(); audioStream=algoCapture?.stream; } else if(resolveAudio.captureStream) audioStream=resolveAudio.captureStream(); } audioStream?.getAudioTracks().forEach(track=>stream.addTrack(track)); const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"; const rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8_000_000}); const chunks=[];
@@ -203,7 +211,7 @@
   ui.charset.oninput=()=>{ui.charsetPreset.value="custom";};
   ui.palettePreset.onchange=()=>applyPalettePreset(ui.palettePreset.value);
   [ui.colorMode,ui.paletteSize,ui.backgroundStyle,ui.foreground,ui.palette2,ui.palette3,ui.palette4,ui.palette5,ui.background,ui.background2].forEach(control=>control.addEventListener("input",markPaletteCustom));
-  $("play").onclick=()=>{state.playing=!state.playing;$("play").textContent=state.playing?"PAUSE":"PLAY";transport.textContent=state.playing?"PLAYING":"PAUSED"; if(state.sourceKind==="video")state.playing?state.media.play():state.media.pause(); syncResolveAudio();};
+  $("play").onclick=()=>{ if(state.completed){state.completed=false;state.started=performance.now();state.playing=true;} else state.playing=!state.playing; $("play").textContent=state.playing?"PAUSE":"PLAY";transport.textContent=state.playing?"BUILDING":"PAUSED"; if(state.sourceKind==="video")state.playing?state.media.play():state.media.pause(); syncResolveAudio();};
   ui.resolveAudio.onchange=()=>{ if(ui.resolveAudio.checked)syncResolveAudio(); else stopResolveAudio(); };
   ui.resolveSound.onchange=()=>syncResolveAudio();
   ui.audioLevel.oninput=()=>{ if(algoMaster&&algoContext) algoMaster.gain.setValueAtTime(Number(ui.audioLevel.value)/100,algoContext.currentTime); if(ui.resolveSound.value==="classic") resolveAudio.volume=Number(ui.audioLevel.value)/100; };

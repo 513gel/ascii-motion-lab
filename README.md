@@ -65,6 +65,11 @@ canvas size. Output provides a separate 25–200% scale control for deliberate
 up/down scaling; Glyph Size only changes ASCII density, not the output image
 dimensions.
 
+Animated presets are build-and-hold: the resolve runs once, then freezes on
+the final fully resolved frame so settings can be changed and inspected. The
+Play control becomes **Replay** after completion. Glyph Size ranges from 5 to
+60 for deliberately large ASCII, while Output Scale changes file dimensions.
+
 ## Run locally
 
 ```powershell

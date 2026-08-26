@@ -42,7 +42,12 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
 - Each upload now also resets `Output Scale` to **100%**. At 100%, the output
   canvas keeps the source's native pixel width and height; the new Output Scale
   slider (25–200%) is the only deliberate output-size control. Glyph Size
-  affects ASCII analysis density, not output dimensions.
+  affects ASCII analysis density, not output dimensions, and now ranges from
+  5–60 so it can visibly create large glyphs on high-resolution sources.
+- Animated presets are now build-and-hold: once the duration completes, the
+  renderer freezes on the fully resolved final frame, stops resolve audio,
+  pauses any video source, and changes Play to Replay. Restart resets the
+  completed state without losing settings.
 - Animated presets now default to a generated **Algorithmic Resolve** Web Audio
   layer: Memory Leak is the quiet fixed-pitch low bed, Cache Miss creates sparse
   comparison packets mid-build, and Heap Clack supplies major lock-in beats.
