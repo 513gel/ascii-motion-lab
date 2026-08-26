@@ -164,7 +164,7 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
 - Animated presets are now build-and-hold: once the duration completes, the
   renderer freezes on the fully resolved final frame, stops resolve audio,
   pauses any video source, and changes Play to Replay. Each animated preview
-  and WebM adds a fixed **2-second start-frame lead-in** before the selected
+  and WebM adds a fixed **1-second start-frame lead-in** before the selected
   build duration and a **5-second final-frame hold** after it. Restart resets
   the completed state without losing settings.
 - Output is now the full delivery panel: aspect ratio, resolution/long edge,
@@ -210,6 +210,9 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
 - Latest direct-size update: source commit `c100094`; deployed 13thoni commit
   `fda30e7`. Both passed JavaScript syntax, diff, DOM lookup, and production
   site build checks before push.
+- Text Typewriter's color trail is word-based: the currently typing word is
+  vermilion; only the four immediately previous words retain any red, rapidly
+  fading to almost-white by the fourth. All older text is white.
 - Browser-verified before the newest output/audio rework: local image load, Oni
   palette/radial background, katakana library, pasted-text weave, Text Repeat,
   and Auto Source all worked without console errors. Sticky mobile preview was

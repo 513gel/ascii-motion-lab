@@ -145,7 +145,7 @@
     else if(sourceRatio<targetRatio){ sh=sourceW/targetRatio; sy=(sourceH-sh)/2; }
     target.drawImage(source,sx,sy,sw,sh,0,0,targetW,targetH);
   }
-  const buildLeadSeconds=2, buildHoldSeconds=5;
+  const buildLeadSeconds=1, buildHoldSeconds=5;
   const clipDuration=()=>isAnimated()?buildLeadSeconds+Number(ui.duration.value)+buildHoldSeconds:Number(ui.duration.value);
   const buildTimeFromTimeline=elapsed=>Math.max(0,Math.min(Number(ui.duration.value),elapsed-buildLeadSeconds));
   function finishAnimation(){
@@ -157,7 +157,7 @@
     const seconds=Number(ui.duration.value); if(!isAnimated()) return 0;
     const elapsed=state.playing?state.pausedElapsed+(performance.now()-state.started)/1000:state.pausedElapsed;
     if(state.playing&&elapsed>=clipDuration()){ finishAnimation(); return seconds; }
-    if(state.playing&&elapsed<buildLeadSeconds) transport.textContent="START FRAME — 2 SECOND LEAD-IN";
+    if(state.playing&&elapsed<buildLeadSeconds) transport.textContent="START FRAME — 1 SECOND LEAD-IN";
     else if(state.playing&&elapsed>=buildLeadSeconds+seconds) transport.textContent="FINAL FRAME — 5 SECOND HOLD";
     return state.completed?seconds:buildTimeFromTimeline(elapsed);
   }
@@ -201,12 +201,25 @@
   function patternChars(){ return ui.pattern.value==="custom"?(ui.patternTile.value||"░▒▓█"):(proceduralPatterns[ui.pattern.value]||""); }
   function patternGlyph(x,y,bright){ const chars=patternChars(); if(!chars) return ""; return chars[Math.abs(Math.floor(x*1.7+y*2.3+bright*7))%chars.length]; }
   function drawPattern(w,h,cell,cellH,alpha=1){ const chars=patternChars(); if(!chars) return; ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=ui.foreground.value;ctx.font=`${Math.max(5,cell)}px monospace`;ctx.textBaseline="top"; for(let y=0;y<h;y+=cellH)for(let x=0;x<w;x+=cell)ctx.fillText(patternGlyph(x/cell,y/cellH,0),x,y);ctx.restore(); }
+  function textFoundationContent(){
+    const ramp=ui.charset.value || characterLibraries.dense;
+    let text=(ui.lockSentence.checked && ui.lockedSentence.value.trim()?ui.lockedSentence.value:ui.customText.value).replace(/\r/g,"") || ramp;
+    const bold=ui.boldWords.value.split(",").map(word=>word.trim()).filter(Boolean); if(bold.length) text+=` ${bold.join(" ")} ${bold.join(" ")}`;
+    return {text,ramp};
+  }
+  function typewriterWordIndex(flowIndex){
+    const {text:rawText,ramp}=textFoundationContent(), text=rawText.replace(/\s+/g," ").trim() || ramp;
+    const sourceIndex=Math.floor(flowIndex/Math.max(1,Number(ui.textScale.value)));
+    if(ui.noTextRepeat.checked&&sourceIndex>=text.length) return -1;
+    const index=((sourceIndex%text.length)+text.length)%text.length;
+    if(/\s/.test(text[index]||" ")) return -1;
+    const words=text.split(/\s+/), wordInCycle=text.slice(0,index+1).trimStart().split(/\s+/).length-1;
+    return Math.floor(sourceIndex/text.length)*words.length+wordInCycle;
+  }
   function glyph(bright,x=0,y=0,textFlowIndex=null){
     const p=Math.max(0,Math.min(1,bright));
     if(ui.glyphSource.value==="text"){
-      const ramp=ui.charset.value || characterLibraries.dense;
-      let text=(ui.lockSentence.checked && ui.lockedSentence.value.trim()?ui.lockedSentence.value:ui.customText.value).replace(/\r/g,"") || ramp;
-      const bold=ui.boldWords.value.split(",").map(word=>word.trim()).filter(Boolean); if(bold.length) text+=` ${bold.join(" ")} ${bold.join(" ")}`;
+      const {text:sourceText,ramp}=textFoundationContent(); let text=sourceText;
       if(p<.07) return " ";
       const repeat=Math.max(1,Number(ui.textScale.value));
       if(ui.textLayout.value==="lines"){
@@ -346,7 +359,14 @@
     return {x,y,visible:step%2===0};
   }
   function drawDraftCursor(time,cell,cellH){ const cursor=draftCursor(time); if(!cursor||!cursor.visible) return; ctx.save();ctx.globalAlpha=.9;ctx.fillStyle=ui.foreground.value;ctx.fillRect(cursor.x*cell,cursor.y*cellH+Math.max(1,cellH*.86),Math.max(2,cell*.72),Math.max(1,cellH*.08));ctx.restore(); }
-  const fadeTypewriterColor=(age,fade)=>{ const mix=Math.max(0,Math.min(1,age/fade)), red=[239,64,53], white=[255,255,255], channel=index=>Math.round(red[index]+(white[index]-red[index])*mix); return `rgb(${channel(0)},${channel(1)},${channel(2)})`; };
+  const fadeTypewriterColor=(mix)=>{ const bounded=Math.max(0,Math.min(1,mix)), red=[239,64,53], white=[255,255,255], channel=index=>Math.round(red[index]+(white[index]-red[index])*bounded); return `rgb(${channel(0)},${channel(1)},${channel(2)})`; };
+  function typewriterColor(flowIndex,target){
+    const activeWord=typewriterWordIndex(Math.max(0,target-1)), thisWord=typewriterWordIndex(flowIndex), age=activeWord-thisWord;
+    // Current word is hot vermilion; only its four immediate predecessors
+    // remain tinted, with the fourth practically resolved to white.
+    const fades=[0,.58,.82,.94,.985];
+    return thisWord<0||age<0||age>=fades.length?"#ffffff":fadeTypewriterColor(fades[age]);
+  }
   function render(now=performance.now()){
     requestAnimationFrame(render);
     if(state.textMode) return;
@@ -362,7 +382,7 @@
     const mode=ui.mode.value, data=frame.data, glitch=Number(ui.glitch.value)/100;
     const isTextTypewriter=mode==="text-typewriter"&&ui.glyphSource.value==="text"&&ui.textLayout.value==="flow";
     let typewriterTotal=0; if(isTextTypewriter){ for(let i=0;i<data.length;i+=4) if(adjusted(data[i],data[i+1],data[i+2])>=.07) typewriterTotal++; }
-    const typewriterTarget=Math.floor(Math.max(0,Math.min(1,t/Number(ui.duration.value)))*typewriterTotal), typewriterFade=Math.max(6,Math.ceil(typewriterTotal*.07));
+    const typewriterTarget=Math.floor(Math.max(0,Math.min(1,t/Number(ui.duration.value)))*typewriterTotal);
     let visibleGlyphs=0, darkAdded=0, brightAdded=0, textFlowIndex=0; const liveLines=ui.previewEngine.value==="text"?[]:null;
     for(let y=0;y<state.analyserH;y++) { let liveLine=""; for(let x=0;x<state.analyserW;x++){
       const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
@@ -373,7 +393,7 @@
       let char=renderGlyph(v,x,y,t,mode,flowIndex); if(!isTextTypewriter&&useTextFlow)textFlowIndex++; if(mode==="terminal" && ui.glyphSource.value==="ramp" && t/Number(ui.duration.value)<seed(x,y)*.9) char=("01/\\|[]{}<>+-")[Math.floor(seed(y,x+12)*12)];
       const jitter=glitch>0&&seed(x,Math.floor(t*ui.fps.value))<glitch*.14 ? Math.round((seed(y,x)*2-1)*cell*2) : 0;
       if(liveLines)liveLine+=char; if(char!==" "){ visibleGlyphs++; if(v<.28)darkAdded++; if(v>.72)brightAdded++; }
-      ctx.globalAlpha=1; ctx.fillStyle=isTextTypewriter&&flowIndex!==null&&t<Number(ui.duration.value)-.001?fadeTypewriterColor(typewriterTarget-flowIndex,typewriterFade):glyphColor(v,r,g,b); ctx.fillText(char,x*cell+jitter,y*cellH);
+      ctx.globalAlpha=1; ctx.fillStyle=isTextTypewriter&&flowIndex!==null&&t<Number(ui.duration.value)-.001?typewriterColor(flowIndex,typewriterTarget):glyphColor(v,r,g,b); ctx.fillText(char,x*cell+jitter,y*cellH);
     } if(liveLines)liveLines.push(liveLine); }
     const cursor=draftCursor(t); if(liveLines&&cursor&&cursor.visible&&liveLines[cursor.y]){const chars=liveLines[cursor.y].split("");chars[cursor.x]="▌";liveLines[cursor.y]=chars.join("");}
     if(liveLines)updateLiveText(liveLines,w,h,cell,cellH); else updateLiveText([],w,h,cell,cellH);
