@@ -43,17 +43,17 @@ https://freesound.org/people/Johnmode/sounds/826671/
 ## Resolve Sound Lab
 
 `sound-lab.html` is a small phone-friendly audition board containing 20
-browser-synthesized **Chunky Chatter** candidates for character arrivals:
-crunchy fictional pseudo-speech built from formant chirps, square-wave edges,
-pitch jumps, noise, and stutters. It has no samples or external dependencies;
-choose a sound code there before integrating that sound DNA into the main
-converter.
+browser-synthesized **Algorithmic Data Texture** candidates for character
+arrivals. The current sound DNA is dense, dry micro-events: comparison clicks,
+packet ticks, unstable pitch clusters, and short noise bursts inspired by a
+user-supplied sorting-algorithm reference. It has no samples or external
+dependencies; choose a sound code there before integrating that sound DNA into
+the main converter.
 
-The pack is deliberately divided into eight low-data textures, six
-crunch-mouth variants, and six heavier datamosh resolves. Each tile uses a
-different synthesis path—hard-gated noise, constant-pitch formants, pulse
-trains, FM warble, clipped radio speech, or filtered static—rather than a
-shared falling-pitch impact.
+The pack is divided into Sort Ticks, Data Swarms, and System Events. Each tile
+uses a different synthesis path—hard-gated noise, fixed-pitch packets, pulse
+trains, FM warble, and filtered static—rather than a shared falling-pitch
+impact or vocal decay.
 
 ## Run locally
 

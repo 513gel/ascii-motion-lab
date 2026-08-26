@@ -55,29 +55,30 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   through controls leaves the active source/output visibly pinned below the
   header; mobile `main` must remain block layout for sticky containment.
 - `sound-lab.html` is a dependency-free mobile audition board with exactly 20
-  local Web Audio **Chunky Chatter** candidates for ASCII arrivals. All prior
-  detail, organic, signal, resolve, and magnetic-click candidates were removed
-  at the user's request. It is now divided into 8 Low Data Textures, 6 Crunch
-  Mouths, and 6 Datamosh Beasts. The common falling sub-thump and decaying
-  formant recipe was removed after the user correctly identified it as making
-  every tile sound like a PS1 ball bounce. The 20 current tiles use distinct
-  hard-gated noise, constant-pitch formants, pulse trains, FM warble, clipped
-  radio speech, or filtered-static paths instead. It is deliberately separate
-  from the converter until the user selects a sound DNA. The page requires a
-  tap before audio can start (browser autoplay policy).
+  local Web Audio **Algorithmic Data Texture** candidates for ASCII arrivals.
+  All prior detail, organic, signal, resolve, magnetic-click, and pseudo-speech
+  candidates were removed at the user's request. The current pack is based on
+  the user's local 11.47-second `Sorting Algorithms be like....wav` reference:
+  its waveform/spectrogram has a continuous dry, broadband stream of dense
+  micro-events rather than a discrete vocal or bouncy impact sound. The board
+  is now divided into 8 Sort Ticks, 6 Data Swarms, and 6 System Events using
+  hard-gated noise, fixed-pitch packets, pulse trains, FM warble, and filtered
+  static. It is deliberately separate from the converter until the user selects
+  a sound DNA. The page requires a tap before audio can start (browser autoplay
+  policy).
 - Git is configured **locally for this repository only** as `513gel` using
   `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
 - Browser-verified after these controls were added: local image load, Oni
   palette/radial background, katakana library, pasted-text weave, Text Scale,
   and Auto Source all worked without console errors. Sticky mobile preview was
   verified at 390 × 844 after a 650px page scroll (stage remained at top 50px).
-  The first 20-item Chatter replacement parsed with Node and was
-  browser-checked. The current distinct-engine replacement parses with Node,
-  has 20 entries, and validates that every tile references a real recipe, but
-  its post-edit browser audition could not run because the connected browser
-  reported no controllable tabs. Re-audition the new pack manually after
-  opening the live Sound Lab. MP4 export and AI-video handoff are future
-  additions; FFmpeg should remain optional and local.
+  The pre-reference Chatter replacement parsed with Node and was
+  browser-checked. The current data-texture replacement parses with Node, has
+  20 entries, and validates that every tile references a real recipe. The
+  connected browser still reported no controllable tabs after the change, so
+  post-edit audio audition must be done manually from the live Sound Lab. MP4
+  export and AI-video handoff are future additions; FFmpeg should remain
+  optional and local.
 
 ## Run
 
