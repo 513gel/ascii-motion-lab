@@ -8,13 +8,28 @@ browser-playable video into white-on-black animated character art.
 `001` is a self-contained no-build prototype. It supports image/GIF/video
 upload, live ASCII conversion, character-build / terminal / pixel-sort / scanline
 / edge reveal modes; terminal-rain, particle, waveform, and ASCII-orb overlays;
-prompt-driven styling controls; PNG frame export; and WebM
-loop export.
+prompt-driven styling controls; 2–5 color palettes, source-color sampling and
+background gradients; built-in character libraries and text-weave glyphs; PNG
+frame export; and WebM loop export.
 
 The default after upload is **Direct ASCII — Still**, so the source is visible
 before anything animates. Use a Quick Start animation preset or **Play** to
 start motion. On mobile, use **Quick Start** first. The typing field is optional and merely
 maps a few obvious phrases to the same visible controls—it is not an AI model.
+
+## Color and character controls
+
+- **Color behavior:** one-color, a 2–5 color brightness palette, or actual
+  RGB colors sampled from the source image/video.
+- **Palette presets:** Monochrome, Oni Blood, Cobalt Signal, Phosphor Green,
+  Amber Terminal, Game Boy, Thermal, Auto Source, plus fully custom colors.
+- **Background fill:** solid, vertical gradient, or radial glow using two
+  editable background colors.
+- **Character libraries:** dense ASCII, English A–Z, binary/terminal, blocks,
+  Japanese katakana, symbols/runes, or a custom character ramp.
+- **Text Weave:** paste lyrics, a quote, or any text block; the visible image
+  is formed from that text. Glyph Size changes image density, while Text Scale
+  controls how long each pasted character repeats.
 
 ## Resolve sound
 

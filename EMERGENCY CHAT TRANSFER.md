@@ -42,10 +42,21 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
 - `assets/ascii-resolve-click-loop.mp3` is a 3.500-second loop-safe cue made
   from Johnmode Freesound 826671 (CC0). Animated presets restart and loop it in
   sync with the resolve cycle; Output has a mute toggle and level control.
+- Color control now supports a single editable foreground color, 2–5 color
+  brightness palettes, and real RGB source-color sampling. Palette presets:
+  Monochrome, Oni Blood, Cobalt Signal, Phosphor Green, Amber Terminal, Game
+  Boy, Thermal, Auto Source, and Custom. The background supports solid,
+  vertical-gradient, and radial-glow fills with two editable colors.
+- Character libraries now provide dense ASCII, English, binary/terminal,
+  blocks, Japanese katakana, symbols/runes, and a custom ramp. Text Weave can
+  build the visible source from pasted lyrics or another text block; Text Scale
+  controls character repetition while Glyph Size controls image density.
 - Git is configured **locally for this repository only** as `513gel` using
   `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
-- Not yet visually tested in Chrome. MP4 export and AI-video handoff are future
-  additions; FFmpeg should remain optional and local.
+- Browser-verified after these controls were added: local image load, Oni
+  palette/radial background, katakana library, pasted-text weave, Text Scale,
+  and Auto Source all worked without console errors. MP4 export and AI-video
+  handoff are future additions; FFmpeg should remain optional and local.
 
 ## Run
 

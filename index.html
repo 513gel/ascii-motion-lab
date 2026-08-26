@@ -77,9 +77,6 @@
               <input id="duration" type="range" min="1" max="12" step="0.5" value="3.5" />
             </label>
           </div>
-          <label>CHARACTER RAMP
-            <input id="charset" type="text" value=" .,:;irsXA253hMHGS#9B&@" spellcheck="false" />
-          </label>
           <div class="two-col">
             <label>BRIGHTNESS <output id="brightness-out">0</output>
               <input id="brightness" type="range" min="-100" max="100" value="0" />
@@ -91,8 +88,61 @@
           <div class="checks">
             <label><input id="invert" type="checkbox" /> INVERT</label>
             <label><input id="edges" type="checkbox" /> EDGE BOOST</label>
-            <label><input id="source-color" type="checkbox" /> SOURCE COLOR</label>
           </div>
+        </section>
+
+        <section class="panel color-panel">
+          <div class="panel-title">COLOR + PALETTE</div>
+          <div class="two-col">
+            <label>COLOR BEHAVIOR
+              <select id="color-mode"><option value="mono" selected>ONE COLOR</option><option value="palette">BRIGHTNESS PALETTE</option><option value="source">AUTO FROM SOURCE</option></select>
+            </label>
+            <label>PALETTE PRESET
+              <select id="palette-preset"><option value="mono" selected>MONOCHROME</option><option value="oni">ONI BLOOD</option><option value="cobalt">COBALT SIGNAL</option><option value="phosphor">PHOSPHOR GREEN</option><option value="amber">AMBER TERMINAL</option><option value="gameboy">GAME BOY</option><option value="thermal">THERMAL</option><option value="source">AUTO SOURCE</option><option value="custom">CUSTOM</option></select>
+            </label>
+          </div>
+          <div class="two-col">
+            <label>PALETTE COLORS
+              <select id="palette-size"><option value="2">2 COLORS</option><option value="3">3 COLORS</option><option value="4">4 COLORS</option><option value="5" selected>5 COLORS</option></select>
+            </label>
+            <label>BACKGROUND FILL
+              <select id="background-style"><option value="solid" selected>SOLID</option><option value="vertical">VERTICAL GRADIENT</option><option value="radial">RADIAL GLOW</option></select>
+            </label>
+          </div>
+          <div class="palette-grid" aria-label="Palette colors">
+            <label title="Color 1"><span>1</span><input id="foreground" type="color" value="#f5f5f5" /></label>
+            <label title="Color 2"><span>2</span><input id="palette-2" type="color" value="#c8c8c8" /></label>
+            <label title="Color 3"><span>3</span><input id="palette-3" type="color" value="#8a8a8a" /></label>
+            <label title="Color 4"><span>4</span><input id="palette-4" type="color" value="#4d4d4d" /></label>
+            <label title="Color 5"><span>5</span><input id="palette-5" type="color" value="#1e1e1e" /></label>
+          </div>
+          <div class="two-col">
+            <label>BACKGROUND A <input id="background" type="color" value="#050505" /></label>
+            <label>BACKGROUND B <input id="background-2" type="color" value="#111111" /></label>
+          </div>
+          <p class="hint"><strong>Auto from source</strong> takes the actual colors from your image/video. In Palette mode, color 5 is the shadow and color 1 is the highlight.</p>
+        </section>
+
+        <section class="panel glyph-panel">
+          <div class="panel-title">CHARACTER LIBRARY</div>
+          <div class="two-col">
+            <label>LIBRARY
+              <select id="charset-preset"><option value="dense" selected>DENSE ASCII</option><option value="english">ENGLISH A–Z</option><option value="binary">BINARY / TERMINAL</option><option value="blocks">BLOCKS + SHADES</option><option value="katakana">JAPANESE KATAKANA</option><option value="symbols">SYMBOLS / RUNES</option><option value="custom">CUSTOM RAMP</option></select>
+            </label>
+            <label>CONTENT MODE
+              <select id="glyph-source"><option value="ramp" selected>BRIGHTNESS RAMP</option><option value="text">TEXT WEAVE</option></select>
+            </label>
+          </div>
+          <label>ACTIVE CHARACTER SET
+            <input id="charset" type="text" value=" .,:;irsXA253hMHGS#9B&@" spellcheck="false" />
+          </label>
+          <label>PASTE LYRICS / TEXT BLOCK <span class="field-note">used only in Text Weave</span>
+            <textarea id="custom-text" rows="3" placeholder="Paste lyrics, a quote, a poem, or anything else you want the picture to be made from."></textarea>
+          </label>
+          <label>TEXT SCALE <output id="text-scale-out">1</output>
+            <input id="text-scale" type="range" min="1" max="8" step="1" value="1" />
+          </label>
+          <p class="hint">Glyph Size scales the whole image. Text Scale controls how long each pasted character stays on screen before the next one appears.</p>
         </section>
 
         <section class="panel">
@@ -112,10 +162,6 @@
             <label>SCANLINES <output id="scanlines-out">18</output>
               <input id="scanlines" type="range" min="0" max="100" value="18" />
             </label>
-          </div>
-          <div class="two-col">
-            <label>FOREGROUND <input id="foreground" type="color" value="#f5f5f5" /></label>
-            <label>BACKGROUND <input id="background" type="color" value="#050505" /></label>
           </div>
           <div class="two-col">
             <label>PROCEDURAL OVERLAY
