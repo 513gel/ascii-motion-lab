@@ -107,14 +107,14 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   Vending Tick, and Concrete Clack. They retain batch-tied timing while using
   different playback, tone, filter, and noise profiles. Spacebar toggles the
   Play/Pause/Replay transport unless the user is typing in a field.
-- The stage defaults to **TRUE TEXT** rendering: a real DOM `<pre>` containing
-  the exact glyph grid from the current frame, sized to the visible stage with
-  monospace metrics and no canvas-raster preview. Canvas rendering still occurs
-  in parallel and is used only for visual effects plus PNG/WebM output. The
-  stage selector can return to Canvas when palette/source colours and overlays
-  matter more than literal editable text. CSS transforms from manual viewport
-  zoom can still soften any browser-rendered text; `FIT VIEW` returns it to the
-  crisp default scale.
+- The stage now defaults to **TEXT CANVAS**: a literal editable DOM `<pre>` in
+  strict Courier/Courier New monospace with `white-space: pre`, so every
+  character (including a blank) is a fixed grid cell. It is never rasterized
+  for the editable preview. `ATTACH SOURCE` switches into read-only **TRUE
+  TEXT**, which displays the generated literal glyph grid; switching back to
+  TEXT CANVAS freezes that grid for direct edits. The stage selector can still
+  return to Canvas for palette/source colours and effects. Copy/download uses
+  the actual edited characters, and a PNG snapshot renders the same text.
 - Sidebar controls are now divided into Start, Look, Text, Motion, and Output
   pages. Fresh sessions explicitly reset baseline visual processing: contrast
   100, left-to-right sweep, glitch 0, scanlines 0, overlay None, and overlay
@@ -125,9 +125,10 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   then tries scratch symbols before settling on the real sampled glyph. A
   blinking DOM/canvas caret marks an active random editing cell until lock.
 - The Japanese library uses half-width Katakana (`ｱｲｳ...`) rather than full-width
-  forms so each glyph occupies one literal terminal/`<pre>` cell. TRUE TEXT
-  also has MS Gothic and Yu Gothic UI Mono fallbacks. Full-width custom CJK text
-  still cannot be treated as single-width ASCII without changing its characters.
+  forms so each glyph occupies one literal terminal/`<pre>` cell. The core
+  preview/export font is strict Courier/Courier New rather than a proportional
+  UI font. Full-width custom CJK text still cannot be treated as single-width
+  ASCII without changing its characters.
 - Text Foundation now supports multiple local documents in one import, left,
   right, vertical, and spiral traversal, a literal locked sentence, text/ramp
   blend, weighted bold words, local find/replace, and a browser-local reusable

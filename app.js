@@ -12,7 +12,7 @@
   // Do not let browser form restoration boot the tool into someone's previous
   // glitch carnival. New sessions start as a clean, direct baseline.
   ui.glitch.value="0"; ui.scanlines.value="0"; ui.effect.value="none"; ui.effectPower.value="0"; ui.contrast.value="100"; ui.direction.value="left";
-  const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1, lastVisibleGlyphs:0, generationTicks:0, firstTick:true, finalTick:false, viewport:{x:0,y:0,zoom:1} };
+  const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1, lastVisibleGlyphs:0, generationTicks:0, firstTick:true, finalTick:false, textMode:true, manualText:"", viewport:{x:0,y:0,zoom:1} };
   const outputNames={size:"cell-size-out",duration:"duration-out",textScale:"text-scale-out",textBlend:"text-blend-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",outputScale:"output-scale-out",audioLevel:"audio-level-out",safeArea:"safe-area-out"};
   const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:key==="outputScale"?`${ui[key].value}%`:ui[key].value);
   document.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",updateReadouts)); updateReadouts();
@@ -279,7 +279,25 @@
     ctx.restore();
   }
   function drawPoster(w,h){ if(!ui.posterMode.checked) return; const margin=Math.max(14,Math.round(Math.min(w,h)*.055));ctx.save();ctx.fillStyle=ui.foreground.value;ctx.globalAlpha=.95;ctx.font=`700 ${Math.max(9,Math.round(Math.min(w,h)*.026))}px monospace`;ctx.textBaseline="top";ctx.fillText(ui.posterTitle.value||"GLYPHSHIFT",margin,margin+8);ctx.textBaseline="alphabetic";ctx.textAlign="right";ctx.fillText(ui.posterFooter.value||"// ASCII MOTION",w-margin,h-margin-9);ctx.restore(); }
+  const readTextCanvas=()=>liveText.innerText.replace(/\r/g,"");
+  function renderTextCanvas(){
+    canvasWrap.classList.add("is-live-text","is-manual-text");
+    liveText.contentEditable="true";
+    liveText.setAttribute("aria-label","Editable monospaced text canvas");
+    empty.hidden=true;
+  }
+  function enterTextCanvas(text=state.manualText,focus=false){
+    state.textMode=true; state.manualText=(text||"").replace(/\r/g,""); state.playing=false; state.completed=false; stopResolveAudio();
+    ui.previewEngine.value="manual"; liveText.textContent=state.manualText; fitViewport(false); renderTextCanvas();
+    transport.textContent="TEXT CANVAS — TYPE DIRECTLY INTO THE GRID";
+    if(focus) requestAnimationFrame(()=>liveText.focus());
+  }
+  function leaveTextCanvas(){
+    if(!state.textMode) return;
+    state.manualText=readTextCanvas(); state.textMode=false; liveText.contentEditable="false"; liveText.setAttribute("aria-label","Literal ASCII text preview"); canvasWrap.classList.remove("is-manual-text");
+  }
   function updateLiveText(lines,w,h,cell,cellH){
+    if(state.textMode) return;
     const useText=ui.previewEngine.value==="text"; canvasWrap.classList.toggle("is-live-text",useText);
     if(!useText){ canvasWrap.style.width="";canvasWrap.style.height="";liveText.textContent="";return; }
     const displayScale=Math.min(1,Math.max(.01,(drop.clientWidth-4)/w),Math.max(.01,(drop.clientHeight-4)/h));
@@ -295,6 +313,7 @@
   function drawDraftCursor(time,cell,cellH){ const cursor=draftCursor(time); if(!cursor||!cursor.visible) return; ctx.save();ctx.globalAlpha=.9;ctx.fillStyle=ui.foreground.value;ctx.fillRect(cursor.x*cell,cursor.y*cellH+Math.max(1,cellH*.86),Math.max(2,cell*.72),Math.max(1,cellH*.08));ctx.restore(); }
   function render(now=performance.now()){
     requestAnimationFrame(render);
+    if(state.textMode) return;
     if(!state.imageReady) return;
     const frameInterval=1000/Number(ui.fps.value);
     if(state.lastRender && now-state.lastRender<frameInterval) return;
@@ -328,6 +347,7 @@
     if(!file) return; if(state.fileURL) URL.revokeObjectURL(state.fileURL); state.fileURL=URL.createObjectURL(file); state.imageReady=false;
     // Every new source begins as an inspectable still, regardless of any form
     // values the browser restored from a previous session.
+    leaveTextCanvas(); ui.previewEngine.value="text";
     ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; ui.aspectRatio.value="source"; ui.outputResolution.value="native"; fitViewport(false); updateReadouts(); state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; $("play").textContent="PLAY"; stopResolveAudio();
     const isVideo=file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv)$/i.test(file.name); const el=isVideo?document.createElement("video"):new Image();
     state.media=el; state.sourceKind=isVideo?"video":"image"; el.src=state.fileURL; status.textContent=`LOADING // ${file.name.toUpperCase()}`;
@@ -369,8 +389,16 @@
     presets[name]?.(); state.started=performance.now(); state.playing=name!=="direct"; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"){ if(state.playing)state.media.play().catch(()=>{}); else state.media.pause(); } syncResolveAudio(); updateReadouts(); transport.textContent=name==="direct"?"STATIC PREVIEW":"BUILDING — WILL HOLD ON FINAL FRAME"; commitHistory();
   }
   function restart(){ state.started=performance.now(); state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent=state.playing?"RESTARTED — BUILDING":"RESTARTED — PRESS PLAY"; }
-  function snapshot(){ const a=document.createElement("a");a.download="ascii-motion-frame.png";a.href=out.toDataURL("image/png");a.click(); }
+  function drawTextCanvasFrame(){
+    const text=readTextCanvas(), lines=text.split("\n"), longest=Math.max(1,...lines.map(line=>line.length));
+    const [w,h]=outputDimensions(), padding=Math.round(Math.min(w,h)*.055), maxLine=Math.max(1,w-padding*2), maxHeight=Math.max(1,h-padding*2);
+    const fontSize=Math.max(4,Math.min(maxLine/(longest*.6),maxHeight/(Math.max(1,lines.length)*1.28)));
+    if(out.width!==w||out.height!==h){out.width=w;out.height=h;$("dimension-readout").textContent=`${w} × ${h}`;}
+    fillBackground(w,h); ctx.save();ctx.fillStyle=ui.foreground.value;ctx.font=`${fontSize}px "Courier New", Courier, monospace`;ctx.textBaseline="top";ctx.fontKerning="none";lines.forEach((line,index)=>ctx.fillText(line,padding,padding+index*fontSize*1.28));ctx.restore();
+  }
+  function snapshot(){ if(state.textMode) drawTextCanvasFrame(); const a=document.createElement("a");a.download="ascii-motion-frame.png";a.href=out.toDataURL("image/png");a.click(); }
   function currentAsciiText(){
+    if(state.textMode) return readTextCanvas();
     if(!state.imageReady) return "";
     const t=state.completed?Number(ui.duration.value):state.playing?getTime():state.pausedElapsed, frame=sourceFrame(t); if(!frame) return "";
     const data=frame.data, mode=ui.mode.value, lines=[], requested=ui.asciiColumns.value==="source"?state.analyserW:Number(ui.asciiColumns.value), exportW=Math.max(1,requested), exportH=Math.max(1,Math.round(state.analyserH*exportW/state.analyserW));
@@ -391,7 +419,7 @@
   async function copyAscii(){ const text=$("ascii-export").value||currentAsciiText(); if(!text){ transport.textContent="ATTACH A SOURCE FIRST"; return; } $("ascii-export").value=text; try{ await navigator.clipboard.writeText(text); transport.textContent="COPYABLE TEXT ART COPIED"; }catch{ const field=$("ascii-export"); field.focus(); field.select(); document.execCommand("copy"); transport.textContent="TEXT SELECTED / COPIED"; } }
   function downloadText(name,text,type="text/plain"){ if(!text){transport.textContent="GENERATE OR ATTACH A SOURCE FIRST";return;} const a=document.createElement("a");a.download=name;a.href=URL.createObjectURL(new Blob([text],{type}));a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
   function downloadAscii(){ const text=$("ascii-export").value||currentAsciiText(); $("ascii-export").value=text; downloadText("glyphshift-frame.txt",text); }
-  function downloadHTML(){ const text=$("ascii-export").value||currentAsciiText(); $("ascii-export").value=text; const escaped=text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); downloadText("glyphshift-frame.html",`<!doctype html><meta charset="utf-8"><title>GLYPHSHIFT</title><style>body{margin:0;padding:2rem;background:${ui.background.value};color:${ui.foreground.value};font:12px/1 monospace;white-space:pre}</style><pre>${escaped}</pre>`,"text/html"); }
+  function downloadHTML(){ const text=$("ascii-export").value||currentAsciiText(); $("ascii-export").value=text; const escaped=text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); downloadText("glyphshift-frame.html",`<!doctype html><meta charset="utf-8"><title>GLYPHSHIFT</title><style>body{margin:0;padding:2rem;background:${ui.background.value};color:${ui.foreground.value};font:12px/1 "Courier New",Courier,monospace;white-space:pre;font-kerning:none;font-variant-ligatures:none}</style><pre>${escaped}</pre>`,"text/html"); }
   function downloadMarkdown(){ const text=$("ascii-export").value||currentAsciiText(); $("ascii-export").value=text; downloadText("glyphshift-frame.md",`\`\`\`text\n${text}\n\`\`\``); }
   function downloadANSI(){ const text=$("ascii-export").value||currentAsciiText(); $("ascii-export").value=text; downloadText("glyphshift-frame-ansi.txt",`\u001b[38;2;245;245;245m${text}\u001b[0m`); }
   async function record(){ if(!state.imageReady||state.recording)return; if(!isAnimated()){ transport.textContent="CHOOSE A BUILD STYLE BEFORE EXPORTING VIDEO"; return; } if(!window.MediaRecorder){transport.textContent="MEDIARECORDER NOT AVAILABLE";return;} state.recording=true; state.playing=true; state.completed=false; $("record").classList.add("recording"); $("record").textContent="● RECORDING…"; restart();
@@ -406,7 +434,7 @@
   ["dragenter","dragover"].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.add("dragging");})); ["dragleave","drop"].forEach(type=>drop.addEventListener(type,e=>{e.preventDefault();drop.classList.remove("dragging");})); drop.addEventListener("drop",e=>load(e.dataTransfer.files[0]));
   let panStart=null;
   drop.addEventListener("pointerdown",e=>{
-    if(!state.imageReady || e.button!==0 || e.target.closest("button, select, input, textarea, label")) return;
+    if(!state.imageReady || e.button!==0 || e.target.closest("button, select, input, textarea, label, [contenteditable='true']")) return;
     panStart={pointerX:e.clientX,pointerY:e.clientY,viewX:state.viewport.x,viewY:state.viewport.y}; drop.setPointerCapture?.(e.pointerId); drop.classList.add("panning"); e.preventDefault();
   });
   drop.addEventListener("pointermove",e=>{
@@ -415,7 +443,7 @@
   const finishPan=()=>{ if(!panStart) return; panStart=null; drop.classList.remove("panning"); commitHistory(); };
   drop.addEventListener("pointerup",finishPan); drop.addEventListener("pointercancel",finishPan);
   drop.addEventListener("wheel",e=>{
-    if(!state.imageReady || e.target.closest("button, select, input, textarea, label")) return; e.preventDefault(); const before=state.viewport.zoom, factor=e.deltaY<0?1.12:1/1.12; state.viewport.zoom=Math.max(.25,Math.min(8,before*factor)); if(before===state.viewport.zoom) return; applyViewport(); clearTimeout(viewportCommitTimer); viewportCommitTimer=setTimeout(commitHistory,220);
+    if(!state.imageReady || e.target.closest("button, select, input, textarea, label, [contenteditable='true']")) return; e.preventDefault(); const before=state.viewport.zoom, factor=e.deltaY<0?1.12:1/1.12; state.viewport.zoom=Math.max(.25,Math.min(8,before*factor)); if(before===state.viewport.zoom) return; applyViewport(); clearTimeout(viewportCommitTimer); viewportCommitTimer=setTimeout(commitHistory,220);
   },{passive:false});
   $("apply-prompt").onclick=applyPrompt; $("restart").onclick=restart; $("snapshot").onclick=snapshot; $("record").onclick=record;
   $("generate-ascii").onclick=generateAscii; $("copy-ascii").onclick=copyAscii; $("download-ascii").onclick=downloadAscii; $("download-html").onclick=downloadHTML; $("download-md").onclick=downloadMarkdown; $("download-ansi").onclick=downloadANSI;
@@ -437,7 +465,18 @@
     if(state.sourceKind==="video") state.playing?state.media.play():state.media.pause(); syncResolveAudio();
   };
   ui.resolveSound.onchange=()=>syncResolveAudio();
-  ui.previewEngine.onchange=()=>{ state.lastRender=0; };
+  ui.previewEngine.onchange=()=>{
+    if(ui.previewEngine.value==="manual"){
+      const rendered=state.imageReady?currentAsciiText():state.manualText;
+      enterTextCanvas(rendered,true); return;
+    }
+    if(!state.imageReady){ ui.previewEngine.value="manual"; enterTextCanvas(state.manualText,true); return; }
+    leaveTextCanvas(); state.lastRender=0;
+  };
+  liveText.addEventListener("input",()=>{
+    if(!state.textMode) return;
+    state.manualText=readTextCanvas(); $("ascii-export").value=""; transport.textContent=`TEXT CANVAS — ${state.manualText.length.toLocaleString()} CHARACTERS`;
+  });
   ui.audioLevel.oninput=()=>{ if(state.playing&&ui.resolveSound.value==="algorithmic") syncResolveAudio(); };
   ui.duration.onchange=()=>{ if(state.playing)syncResolveAudio(); };
   const updateTextCount=()=>$("text-count").textContent=`${ui.customText.value.length.toLocaleString()} CHARACTERS`;
@@ -450,12 +489,12 @@
   $("load-text-preset").onclick=()=>{ try{const preset=JSON.parse(localStorage.getItem("glyphshift-text-preset")||"null");if(!preset){transport.textContent="NO SAVED TEXT PRESET";return;}ui.customText.value=preset.text||"";ui.textLayout.value=preset.layout||"flow";ui.textBlend.value=preset.blend||"100";ui.textScale.value=preset.repeat||"1";ui.lockSentence.checked=!!preset.locked;ui.lockedSentence.value=preset.sentence||"";ui.boldWords.value=preset.bold||"";updateTextCount();updateReadouts();state.lastRender=0;commitHistory();transport.textContent="TEXT PRESET LOADED";}catch{transport.textContent="TEXT PRESET COULD NOT LOAD";} };
   document.querySelectorAll("#controls input, #controls select, #controls textarea").forEach(control=>{ if(control.type!=="file") control.addEventListener("change",commitHistory); });
   window.addEventListener("keydown",e=>{
-    if(e.target.matches("input, textarea, select")) return;
+    if(e.target.matches("input, textarea, select, [contenteditable='true']")) return;
     if(e.code==="Space" && !e.target.matches("button")){ e.preventDefault(); $("play").click(); return; }
     if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==="z"){ e.preventDefault(); e.shiftKey?redo():undo(); }
     if(e.altKey&&e.key==="ArrowLeft"){ e.preventDefault(); undo(); }
     if(e.altKey&&e.key==="ArrowRight"){ e.preventDefault(); redo(); }
   });
   $("toggle-ui").onclick=()=>{document.body.classList.toggle("ui-hidden");$("toggle-ui").textContent=document.body.classList.contains("ui-hidden")?"SHOW UI":"HIDE UI";};
-  setControlPage("start"); updateTextCount(); resetHistory(); applyViewport(); render();
+  setControlPage("start"); updateTextCount(); enterTextCanvas("",false); resetHistory(); applyViewport(); render();
 })();
