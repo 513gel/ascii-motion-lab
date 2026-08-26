@@ -51,12 +51,17 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   blocks, Japanese katakana, symbols/runes, and a custom ramp. Text Weave can
   build the visible source from pasted lyrics or another text block; Text Scale
   controls character repetition while Glyph Size controls image density.
+- On phone-width layouts, the header and preview stage are sticky. Scrolling
+  through controls leaves the active source/output visibly pinned below the
+  header; mobile `main` must remain block layout for sticky containment.
 - Git is configured **locally for this repository only** as `513gel` using
   `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
 - Browser-verified after these controls were added: local image load, Oni
   palette/radial background, katakana library, pasted-text weave, Text Scale,
-  and Auto Source all worked without console errors. MP4 export and AI-video
-  handoff are future additions; FFmpeg should remain optional and local.
+  and Auto Source all worked without console errors. Sticky mobile preview was
+  verified at 390 × 844 after a 650px page scroll (stage remained at top 50px).
+  MP4 export and AI-video handoff are future additions; FFmpeg should remain
+  optional and local.
 
 ## Run
 
