@@ -54,20 +54,21 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
 - On phone-width layouts, the header and preview stage are sticky. Scrolling
   through controls leaves the active source/output visibly pinned below the
   header; mobile `main` must remain block layout for sticky containment.
-- `sound-lab.html` is a dependency-free mobile audition board with 20 local
-  Web Audio candidate sounds for ASCII arrivals. It is deliberately separate
-  from the converter until the user selects a preferred sound DNA. The page
-  requires a tap before audio can start (browser autoplay policy).
+- `sound-lab.html` is a dependency-free mobile audition board with 40 local
+  Web Audio candidate sounds for ASCII arrivals, including 20 Magnetic Click
+  variations (21–40). It is deliberately separate from the converter until the
+  user selects a preferred sound DNA. The page requires a tap before audio can
+  start (browser autoplay policy).
 - Git is configured **locally for this repository only** as `513gel` using
   `299465158+513gel@users.noreply.github.com`; do not add any co-author line.
 - Browser-verified after these controls were added: local image load, Oni
   palette/radial background, katakana library, pasted-text weave, Text Scale,
   and Auto Source all worked without console errors. Sticky mobile preview was
   verified at 390 × 844 after a 650px page scroll (stage remained at top 50px).
-  Sound Lab was checked at 390 × 844: it contains exactly 20 responsive sound
-  buttons; Formant Spark and Creature Resolve both activated without console
-  errors. MP4 export and AI-video handoff are future additions; FFmpeg should
-  remain optional and local.
+  Sound Lab was checked at 390 × 844: it contains exactly 40 responsive sound
+  buttons; Formant Spark, Creature Resolve, Iron Pebble, Static Latch, and
+  Gravity Latch all activated without console errors. MP4 export and AI-video
+  handoff are future additions; FFmpeg should remain optional and local.
 
 ## Run
 
