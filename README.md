@@ -49,6 +49,10 @@ pitch jumps, noise, and stutters. It has no samples or external dependencies;
 choose a sound code there before integrating that sound DNA into the main
 converter.
 
+The pack is deliberately divided into eight bassy low-formant thunks, six
+midrange crunch-mouths, and six heavier datamosh resolves so the choices do
+not all sit in the same high-pitched register.
+
 ## Run locally
 
 ```powershell
