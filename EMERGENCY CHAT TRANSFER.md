@@ -49,6 +49,11 @@ Live app: `https://513gel.github.io/ascii-motion-lab/`
   A prior `fit()` function enlarged small grids back to its 220 × 260 maximum,
   defeating the size slider. It now only clamps oversized grids down. `Text
   Repeat` only repeats pasted Text Weave characters; it does not affect size.
+- New **Glyph Collapse** build style starts at the maximum 180 glyph size and
+  smoothly resolves down to the current Glyph Size setting. It samples a new
+  grid every real render frame and always shows the entire coarse image, so it
+  gains visual detail instead of revealing pixels. The Quick Start tile sets it
+  to 12 FPS; the output selector exposes it as `glyph-build`.
 - Animated presets are now build-and-hold: once the duration completes, the
   renderer freezes on the fully resolved final frame, stops resolve audio,
   pauses any video source, and changes Play to Replay. Restart resets the

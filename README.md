@@ -70,6 +70,11 @@ Glyph Size controls the physical size and density of every ASCII character and
 now ranges from 5–180. Text Repeat only controls repeated pasted characters in
 Text Weave; it does not alter character size.
 
+**Glyph Collapse** is a separate build style: it begins at the maximum 180px
+glyph scale, then smoothly resolves down to the Glyph Size you selected. It
+does not hide characters during the transition, so the whole coarse image
+progressively gains detail and ends on the exact requested final density.
+
 Animated presets are build-and-hold: the resolve runs once, then freezes on
 the final fully resolved frame so settings can be changed and inspected. The
 Play control becomes **Replay** after completion. Glyph Size ranges from 5 to

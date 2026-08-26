@@ -148,9 +148,15 @@
     if(mode==="edge") return p>=Math.min(1,random*.35+(1-b)*.1);
     return p>=random;
   }
-  function sourceFrame(){
+  function effectiveGlyphSize(time){
+    const target=Number(ui.size.value);
+    if(ui.mode.value!=="glyph-build") return target;
+    const p=Math.max(0,Math.min(1,time/Number(ui.duration.value))), smooth=p*p*(3-2*p);
+    return Math.max(target,Math.round(180+(target-180)*smooth));
+  }
+  function sourceFrame(time=0){
     if(!state.media) return null;
-    const [mw,mh]=mediaDimensions(), [outputW,outputH]=outputDimensions(), requestedCell=Number(ui.size.value), maxW=220, maxH=260;
+    const [mw,mh]=mediaDimensions(), [outputW,outputH]=outputDimensions(), requestedCell=effectiveGlyphSize(time), maxW=220, maxH=260;
     // Clamp only the *maximum* analysis grid. Never enlarge it again: larger
     // Glyph Size must produce genuinely fewer, bigger characters.
     const [aw,ah]=fit(Math.ceil(outputW/requestedCell),Math.ceil(outputH/requestedCell),maxW,maxH); state.analyserW=aw; state.analyserH=ah; sample.width=aw; sample.height=ah;
@@ -178,17 +184,17 @@
     const frameInterval=1000/Number(ui.fps.value);
     if(state.lastRender && now-state.lastRender<frameInterval) return;
     state.lastRender=now;
-    const frame=sourceFrame(); if(!frame) return;
+    const t=getTime(), frame=sourceFrame(t); if(!frame) return;
     const [w,h]=outputDimensions(), cell=w/state.analyserW, cellH=h/state.analyserH;
     if(out.width!==w||out.height!==h){ out.width=w;out.height=h; $("dimension-readout").textContent=`${w} × ${h}`; }
     $("fps-readout").textContent=`${ui.fps.value} FPS`;
     fillBackground(w,h); ctx.font=`${Math.max(1,cellH)}px monospace`; ctx.textBaseline="top";
-    const t=getTime(), mode=ui.mode.value, data=frame.data, glitch=Number(ui.glitch.value)/100;
+    const mode=ui.mode.value, data=frame.data, glitch=Number(ui.glitch.value)/100;
     tickBuild(t);
     for(let y=0;y<state.analyserH;y++) for(let x=0;x<state.analyserW;x++){
       const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
       if(ui.edges.checked || mode==="edge") { const right=x+1<state.analyserW?i+4:i, down=y+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
-      let shown=mode==="direct" || revealFor(x,y,v,t,mode); if(!shown) continue;
+      let shown=mode==="direct" || mode==="glyph-build" || revealFor(x,y,v,t,mode); if(!shown) continue;
       let char=glyph(v,x,y); if(mode==="terminal" && ui.glyphSource.value==="ramp" && t/Number(ui.duration.value)<seed(x,y)*.9) char=("01/\\|[]{}<>+-")[Math.floor(seed(y,x+12)*12)];
       const jitter=glitch>0&&seed(x,Math.floor(t*ui.fps.value))<glitch*.14 ? Math.round((seed(y,x)*2-1)*cell*2) : 0;
       ctx.fillStyle=glyphColor(v,r,g,b); ctx.fillText(char,x*cell+jitter,y*cellH);
@@ -219,7 +225,7 @@
   }
   function markPaletteCustom(){ if(ui.palettePreset.value!=="source") ui.palettePreset.value="custom"; }
   function applyPrompt(){ const p=ui.prompt.value.toLowerCase(); const set=(key,val)=>{ ui[key].value=val; };
-    if(/pixel.?sort|sort sweep/.test(p))set("mode","pixel-sort"); if(/scan(line)?|develop/.test(p))set("mode","scanline"); if(/edge/.test(p))set("mode","edge"); if(/terminal|decode|resolve|build/.test(p))set("mode",/terminal/.test(p)?"terminal":"decode");
+    if(/glyph.?collapse|large.?glyph|glyph.?build|coarse.?to.?fine/.test(p))set("mode","glyph-build"); else if(/pixel.?sort|sort sweep/.test(p))set("mode","pixel-sort"); else if(/scan(line)?|develop/.test(p))set("mode","scanline"); else if(/edge/.test(p))set("mode","edge"); else if(/terminal|decode|resolve|build/.test(p))set("mode",/terminal/.test(p)?"terminal":"decode");
     if(/rain/.test(p))set("effect","rain"); if(/particle|dust|stars?/.test(p))set("effect","particles"); if(/waveform|audio wave|signal wave/.test(p))set("effect","waveform"); if(/orb|sphere|3d ascii/.test(p))set("effect","orb");
     if(/auto.?color|source.?color/.test(p))set("colorMode","source");
     if(/red|vermilion/.test(p)){set("colorMode","mono");set("foreground","#ef4035");markPaletteCustom();} if(/blue|cobalt/.test(p)){set("colorMode","mono");set("foreground","#4169e1");markPaletteCustom();} if(/green|phosphor/.test(p)){set("colorMode","mono");set("foreground","#9dff68");markPaletteCustom();} if(/white|mono(chrome)?/.test(p)){set("colorMode","mono");set("foreground","#f5f5f5");markPaletteCustom();}
@@ -232,6 +238,7 @@
     const presets={
       direct:()=>set("mode","direct"),
       build:()=>set("mode","decode"),
+      glyph:()=>{set("mode","glyph-build");set("fps","12");},
       sort:()=>{set("mode","pixel-sort");set("direction","random");set("glitch","14");},
       scan:()=>{set("mode","scanline");set("scanlines","38");},
       terminal:()=>{set("mode","terminal");set("scanlines","45");set("glitch","22");},
