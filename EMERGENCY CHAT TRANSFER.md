@@ -132,7 +132,9 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
 - Text Foundation now supports multiple local documents in one import, left,
   right, vertical, and spiral traversal, a literal locked sentence, text/ramp
   blend, weighted bold words, local find/replace, and a browser-local reusable
-  text preset.
+  text preset. Pasting, importing, or loading non-empty text automatically
+  selects **TEXT FOUNDATION**; users no longer need to separately switch the
+  Content Mode dropdown away from Brightness Ramp.
 - Copyable text output has a source/40/80/120-column selector plus optional
   box border and direct .txt, HTML `<pre>`, Markdown, and ANSI-text downloads.
 - `13thoni-site` was cloned fresh on 2026-08-26, GLYPHSHIFT was copied into its

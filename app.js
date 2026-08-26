@@ -480,13 +480,19 @@
   ui.audioLevel.oninput=()=>{ if(state.playing&&ui.resolveSound.value==="algorithmic") syncResolveAudio(); };
   ui.duration.onchange=()=>{ if(state.playing)syncResolveAudio(); };
   const updateTextCount=()=>$("text-count").textContent=`${ui.customText.value.length.toLocaleString()} CHARACTERS`;
-  ui.customText.oninput=()=>{ updateTextCount(); state.lastRender=0; };
+  ui.customText.oninput=()=>{
+    updateTextCount(); state.lastRender=0;
+    if(ui.customText.value.trim()){
+      ui.glyphSource.value="text";
+      transport.textContent="TEXT FOUNDATION ACTIVE — PASTED TEXT IS NOW THE GLYPH MATERIAL";
+    }
+  };
   $("import-text").onclick=()=>textFileInput.click();
-  textFileInput.onchange=async e=>{ const files=[...e.target.files]; e.target.value=""; if(!files.length) return; try{ const docs=await Promise.all(files.map(file=>file.text())); ui.customText.value=docs.join("\n\n"); updateTextCount(); state.lastRender=0; commitHistory(); transport.textContent=`${files.length} TEXT ${files.length===1?"DOCUMENT":"DOCUMENTS"} IMPORTED — ${ui.customText.value.length.toLocaleString()} CHARACTERS`; }catch{ transport.textContent="TEXT IMPORT FAILED"; } };
+  textFileInput.onchange=async e=>{ const files=[...e.target.files]; e.target.value=""; if(!files.length) return; try{ const docs=await Promise.all(files.map(file=>file.text())); ui.customText.value=docs.join("\n\n"); ui.glyphSource.value="text"; updateTextCount(); state.lastRender=0; commitHistory(); transport.textContent=`${files.length} TEXT ${files.length===1?"DOCUMENT":"DOCUMENTS"} IMPORTED — TEXT FOUNDATION ACTIVE`; }catch{ transport.textContent="TEXT IMPORT FAILED"; } };
   $("clear-text").onclick=()=>{ ui.customText.value=""; updateTextCount(); state.lastRender=0; commitHistory(); transport.textContent="TEXT CLEARED"; };
   $("clean-text").onclick=()=>{ const find=ui.findText.value; if(!find){transport.textContent="TYPE SOMETHING TO FIND";return;} ui.customText.value=ui.customText.value.split(find).join(ui.replaceText.value);updateTextCount();state.lastRender=0;commitHistory();transport.textContent="TEXT CLEANED"; };
   $("save-text-preset").onclick=()=>{ const preset={text:ui.customText.value,layout:ui.textLayout.value,blend:ui.textBlend.value,repeat:ui.textScale.value,locked:ui.lockSentence.checked,sentence:ui.lockedSentence.value,bold:ui.boldWords.value};try{localStorage.setItem("glyphshift-text-preset",JSON.stringify(preset));transport.textContent="TEXT PRESET SAVED IN THIS BROWSER";}catch{transport.textContent="TEXT PRESET COULD NOT SAVE";} };
-  $("load-text-preset").onclick=()=>{ try{const preset=JSON.parse(localStorage.getItem("glyphshift-text-preset")||"null");if(!preset){transport.textContent="NO SAVED TEXT PRESET";return;}ui.customText.value=preset.text||"";ui.textLayout.value=preset.layout||"flow";ui.textBlend.value=preset.blend||"100";ui.textScale.value=preset.repeat||"1";ui.lockSentence.checked=!!preset.locked;ui.lockedSentence.value=preset.sentence||"";ui.boldWords.value=preset.bold||"";updateTextCount();updateReadouts();state.lastRender=0;commitHistory();transport.textContent="TEXT PRESET LOADED";}catch{transport.textContent="TEXT PRESET COULD NOT LOAD";} };
+  $("load-text-preset").onclick=()=>{ try{const preset=JSON.parse(localStorage.getItem("glyphshift-text-preset")||"null");if(!preset){transport.textContent="NO SAVED TEXT PRESET";return;}ui.customText.value=preset.text||"";if(ui.customText.value.trim())ui.glyphSource.value="text";ui.textLayout.value=preset.layout||"flow";ui.textBlend.value=preset.blend||"100";ui.textScale.value=preset.repeat||"1";ui.lockSentence.checked=!!preset.locked;ui.lockedSentence.value=preset.sentence||"";ui.boldWords.value=preset.bold||"";updateTextCount();updateReadouts();state.lastRender=0;commitHistory();transport.textContent="TEXT PRESET LOADED — TEXT FOUNDATION ACTIVE";}catch{transport.textContent="TEXT PRESET COULD NOT LOAD";} };
   document.querySelectorAll("#controls input, #controls select, #controls textarea").forEach(control=>{ if(control.type!=="file") control.addEventListener("change",commitHistory); });
   window.addEventListener("keydown",e=>{
     if(e.target.matches("input, textarea, select, [contenteditable='true']")) return;
