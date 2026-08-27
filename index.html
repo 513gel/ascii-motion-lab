@@ -18,6 +18,7 @@
       <div class="top-actions">
         <button id="undo" class="ghost" title="Undo last edit (Ctrl+Z)">← UNDO</button>
         <button id="redo" class="ghost" title="Redo last edit (Ctrl+Shift+Z)">REDO →</button>
+        <button id="header-play" class="ghost" title="Play, pause, or replay the current build">▶ PLAY</button>
         <button id="toggle-ui" class="ghost" title="Hide control panel">HIDE UI</button>
       </div>
     </header>
@@ -46,35 +47,8 @@
 
       <aside id="controls" class="controls">
         <nav class="control-pages" aria-label="GLYPHSHIFT control pages">
-          <button class="is-active" data-control-page="start">START</button><button data-control-page="look">LOOK</button><button data-control-page="text">TEXT</button><button data-control-page="motion">MOTION</button><button data-control-page="output">OUTPUT</button>
+          <button class="is-active" data-control-page="look">LOOK</button><button data-control-page="text">TEXT</button><button data-control-page="motion">MOTION</button><button data-control-page="output">OUTPUT</button>
         </nav>
-        <section class="panel quick-panel" data-page="start">
-          <div class="panel-title">QUICK START <span>NO TYPING REQUIRED</span></div>
-          <p class="quick-copy">Pick one. Upload something. It just works. Tweak the advanced shit only if you want to.</p>
-          <div class="preset-grid">
-            <button data-preset="direct"><strong>DIRECT</strong><small>instant ASCII</small></button>
-            <button data-preset="build"><strong>BUILD IN</strong><small>characters resolve</small></button>
-            <button data-preset="glyph"><strong>GLYPH COLLAPSE</strong><small>huge → set size</small></button>
-            <button data-preset="sort"><strong>PIXEL SORT</strong><small>streaked reveal</small></button>
-            <button data-preset="scan"><strong>SCANLINE</strong><small>develop downward</small></button>
-            <button data-preset="terminal"><strong>TERMINAL</strong><small>data decode</small></button>
-            <button data-preset="rain"><strong>RED RAIN</strong><small>terminal weather</small></button>
-          </div>
-        </section>
-
-        <section class="panel prompt-panel" data-page="start">
-          <div class="panel-title">TYPE A VIBE <span>OPTIONAL SHORTCUT</span></div>
-          <textarea id="prompt" rows="2" placeholder="Try one of the examples below — no AI is hiding behind this box."></textarea>
-          <div class="prompt-examples">
-            <button data-prompt="white terminal decode, slow, CRT">TERMINAL CRT</button>
-            <button data-prompt="edge-first, clean, white">CLEAN EDGES</button>
-            <button data-prompt="pixel sort, blue, choppy">PSX BLUE SORT</button>
-            <button data-prompt="red rain, glitch, slow">CORRUPTED RED</button>
-          </div>
-          <button id="apply-prompt" class="ghost full">USE TYPED VIBE</button>
-          <p class="hint">This is a local settings shortcut, not generative AI. The buttons above are the normal way to use the app.</p>
-        </section>
-
         <section class="panel" data-page="look">
           <div class="panel-title">CONVERSION</div>
           <label>GLYPH SIZE
@@ -142,6 +116,21 @@
           <label>ACTIVE CHARACTER SET
             <input id="charset" type="text" value=" .,:;irsXA253hMHGS#9B&@" spellcheck="false" />
           </label>
+        </section>
+
+        <section class="panel glyph-panel" data-page="text">
+          <div class="panel-title">SOURCE TEXT <span>OPTIONAL FOUNDATION</span></div>
+          <label>LOCKED SENTENCE
+            <input id="locked-sentence" type="text" placeholder="Use only this sentence, repeated" spellcheck="false" />
+          </label>
+          <label>PASTE OR IMPORT TEXT <span id="text-count" class="field-note">0 CHARACTERS</span>
+            <textarea id="custom-text" rows="6" placeholder="Paste lyrics, dialogue, a script, a quote, notes, or an entire text file. Text Foundation uses this as the visible material of the image."></textarea>
+          </label>
+          <div class="text-actions"><button id="import-text" class="ghost">IMPORT .TXT / .MD</button><button id="clear-text" class="ghost">CLEAR TEXT</button></div>
+        </section>
+
+        <section class="panel glyph-panel" data-page="text">
+          <div class="panel-title">FLOW + REPEAT <span>SUBJECT ORDER</span></div>
           <div class="two-col">
             <label>TEXT LAYOUT <span class="field-note">FLOW STARTS AT TOP</span>
               <select id="text-layout"><option value="flow" selected>TOP → BOTTOM READING FLOW</option><option value="reverse">RIGHT → LEFT FLOW</option><option value="lines">PRESERVE LINES</option><option value="vertical">VERTICAL FLOW</option><option value="spiral">SPIRAL FLOW</option></select>
@@ -157,7 +146,11 @@
             <label><input id="lock-sentence" type="checkbox" /> LOCK ONE SENTENCE</label>
           </div>
           <label><input id="no-text-repeat" type="checkbox" /> USE SUPPLIED TEXT ONCE <span class="field-note">THEN LEAVE REMAINING CELLS BLANK</span></label>
-          <div class="panel-subtitle">TEXT COLOR PASSES</div>
+          <p class="hint">Flow advances only through visible subject cells. Text Repeat changes character advancement; it never changes physical glyph size.</p>
+        </section>
+
+        <section class="panel glyph-panel" data-page="text">
+          <div class="panel-title">COLOR PASSES <span>CANVAS PREVIEW</span></div>
           <label><input id="text-highlight-enabled" type="checkbox" /> KEEP CHOSEN WORDS COLORED</label>
           <div class="two-col">
             <label>WORDS / PHRASES <span class="field-note">COMMA-SEPARATED</span><input id="text-highlight-words" type="text" placeholder="death, memory, oni" spellcheck="false" /></label>
@@ -166,24 +159,22 @@
           <label><input id="text-first-pass-enabled" type="checkbox" /> COLOR THE FIRST FULL PASS OF IMPORTED TEXT</label>
           <div class="two-col">
             <label>FIRST-PASS COLOR <input id="text-first-pass-color" type="color" value="#ef4035" /></label>
-            <label class="flow-offset-label">FIRST-PASS ORIGIN <span class="field-note">VISIBLE GRID CELL</span>
-              <span class="flow-offsets"><span>X<input id="text-start-x" type="number" min="0" max="200" step="1" value="0" inputmode="numeric" aria-label="First text pass horizontal origin" /></span><span>Y<input id="text-start-y" type="number" min="0" max="200" step="1" value="0" inputmode="numeric" aria-label="First text pass vertical origin" /></span></span>
+            <label class="flow-offset-label">FIRST-PASS ANCHOR <span class="field-note">SUBJECT %</span>
+              <span class="flow-offsets"><span>X<input id="text-start-x" type="number" min="0" max="100" step="1" value="0" inputmode="numeric" aria-label="First text pass horizontal anchor percentage" /></span><span>Y<input id="text-start-y" type="number" min="0" max="100" step="1" value="0" inputmode="numeric" aria-label="First text pass vertical anchor percentage" /></span></span>
             </label>
           </div>
-          <p class="hint">The first pass begins at X / Y in the visible grid. Text before it wraps as repeated buffer text; the main imported passage gets its own color. This works with Top → Bottom Reading Flow.</p>
-          <label>LOCKED SENTENCE
-            <input id="locked-sentence" type="text" placeholder="Use only this sentence, repeated" spellcheck="false" />
-          </label>
-          <label>PASTE OR IMPORT TEXT <span id="text-count" class="field-note">0 CHARACTERS</span>
-            <textarea id="custom-text" rows="6" placeholder="Paste lyrics, dialogue, a script, a quote, notes, or an entire text file. Text Foundation uses this as the visible material of the image."></textarea>
-          </label>
-          <div class="text-actions"><button id="import-text" class="ghost">IMPORT .TXT / .MD</button><button id="clear-text" class="ghost">CLEAR TEXT</button></div>
+          <div class="anchor-nudges" aria-label="Nudge first-pass anchor"><button type="button" data-anchor-x="-5">← LEFT</button><button type="button" data-anchor-y="-5">↑ UP</button><button type="button" data-anchor-y="5">↓ DOWN</button><button type="button" data-anchor-x="5">RIGHT →</button></div>
+          <p class="hint">0 / 0 means the top-left of the visible subject; 50 / 50 is its center; 100 / 100 is lower-right. The anchor snaps to a real glyph, so the colored first pass visibly starts there. Text before it becomes repeated buffer text. Top → Bottom Flow only.</p>
+        </section>
+
+        <section class="panel glyph-panel" data-page="text">
+          <div class="panel-title">TEXT TOOLS <span>CLEAN + SAVE</span></div>
           <label>BOLD WORDS <span class="field-note">SEPARATE WITH COMMAS</span><input id="bold-words" type="text" placeholder="oni, signal, memory" spellcheck="false" /></label>
           <div class="two-col"><label>FIND <input id="find-text" type="text" spellcheck="false" /></label><label>REPLACE <input id="replace-text" type="text" spellcheck="false" /></label></div>
           <div class="text-actions"><button id="clean-text" class="ghost">SEARCH / REPLACE</button><button id="save-text-preset" class="ghost">SAVE TEXT PRESET</button></div>
           <button id="load-text-preset" class="ghost full">LOAD SAVED TEXT PRESET</button>
           <input id="text-file-input" class="file-input" type="file" accept="text/plain,.txt,.md,.csv" multiple aria-label="Import text files" />
-          <p class="hint">Text Foundation can use a few words or an entire document. Glyph Size sets physical character size; Text Repeat and Layout decide how the text moves through the source shape.</p>
+          <p class="hint">Text Foundation can use a few words or an entire document. Character Library chooses the symbols; these tools only shape the supplied text.</p>
         </section>
 
         <section class="panel" data-page="motion">
@@ -285,6 +276,7 @@
             <textarea id="ascii-export" rows="8" readonly spellcheck="false" placeholder="Generate a frame to get literal copy-pasteable text art here."></textarea>
             <p class="hint">Use Dense ASCII, English, or Binary for strict 7-bit ASCII. Other libraries are still copyable text art, but may use Unicode characters.</p>
           </div>
+          <div class="panel-subtitle">BUILD STYLE</div>
           <label>BUILD STYLE
             <select id="mode">
               <option value="direct" selected>DIRECT ASCII — STILL</option>
@@ -307,8 +299,41 @@
               <option value="scanline">SCANLINE DEVELOP</option>
               <option value="edge">EDGE-FIRST</option>
               <option value="terminal">TERMINAL RESOLVE</option>
+              <optgroup label="30 NEW BUILD MODES">
+                <option value="center-spark">CENTER SPARK / NEAREST FIRST</option>
+                <option value="corner-spiral">CORNER SPIRAL / WRAP IN</option>
+                <option value="checker-lock">CHECKER LOCK / ALTERNATING CELLS</option>
+                <option value="diamond-wave">DIAMOND WAVE / MANHATTAN RINGS</option>
+                <option value="shutter-scan">SHUTTER SCAN / OPENING SLITS</option>
+                <option value="noise-dissolve">NOISE DISSOLVE / ORGANIC GRAIN</option>
+                <option value="orbit-scan">ORBIT SCAN / ANGULAR SWEEP</option>
+                <option value="gravity-drop">GRAVITY DROP / TOP HEAVY</option>
+                <option value="gravity-rise">GRAVITY RISE / BOTTOM HEAVY</option>
+                <option value="band-sweep">BAND SWEEP / MOVING STRIPES</option>
+                <option value="contour-bands">CONTOUR BANDS / LUMINANCE STEPS</option>
+                <option value="luma-stairs">LUMA STAIRS / SHADOWS FIRST</option>
+                <option value="inverse-luma">INVERSE LUMA / HIGHLIGHTS FIRST</option>
+                <option value="halftone-resolve">HALFTONE RESOLVE / DOT FIELD</option>
+                <option value="vein-grow">VEIN GROW / BRANCHING PATHS</option>
+                <option value="island-merge">ISLAND MERGE / CLUSTERS JOIN</option>
+                <option value="mirror-fold">MIRROR FOLD / OUTER HALVES</option>
+                <option value="quadrant-lock">QUADRANT LOCK / FOUR PASSES</option>
+                <option value="binary-search">BINARY SEARCH / LARGE TO SMALL</option>
+                <option value="signal-jam">SIGNAL JAM / INTERFERENCE CLEAR</option>
+                <option value="raster-scrub">RASTER SCRUB / BOUNCING BEAM</option>
+                <option value="barcode-scan">BARCODE SCAN / VERTICAL COLUMNS</option>
+                <option value="staggered-rows">STAGGERED ROWS / CASCADE</option>
+                <option value="staggered-columns">STAGGERED COLUMNS / CASCADE</option>
+                <option value="diagonal-cross">DIAGONAL CROSS / X AXES</option>
+                <option value="wavefront">WAVEFRONT / SINE CREST</option>
+                <option value="morse-pulse">MORSE PULSE / RHYTHMIC CELLS</option>
+                <option value="character-swap">CHARACTER SWAP / WRONG TO TRUE</option>
+                <option value="film-develop">FILM DEVELOP / CHEMICAL BLOOM</option>
+                <option value="scan-converge">SCAN CONVERGE / TWO BEAMS</option>
+              </optgroup>
             </select>
           </label>
+          <div class="panel-subtitle">DELIVERY</div>
           <div class="two-col">
             <label>ASPECT RATIO
               <select id="aspect-ratio"><option value="source" selected>SOURCE RATIO</option><option value="16:9">16:9 WIDESCREEN</option><option value="9:16">9:16 VERTICAL</option><option value="1:1">1:1 SQUARE</option><option value="4:5">4:5 PORTRAIT</option><option value="4:3">4:3 CLASSIC</option><option value="3:2">3:2 PHOTO</option></select>
@@ -331,6 +356,7 @@
             </label>
             <p class="hint compact-hint">Timeline is above; FPS controls how chunky each of those timing phases feels.</p>
           </div>
+          <div class="panel-subtitle">BUILD SOUND</div>
           <div class="audio-row">
             <label>SOUND
               <select id="resolve-sound">

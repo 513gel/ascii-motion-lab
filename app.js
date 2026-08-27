@@ -6,7 +6,7 @@
     mode:$("mode"), size:$("cell-size"), sizeManual:$("cell-size-manual"), startHold:$("start-hold"), duration:$("duration"), endHold:$("end-hold"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textLayout:$("text-layout"), textScale:$("text-scale"), textBlend:$("text-blend"), noTextRepeat:$("no-text-repeat"), textHighlightEnabled:$("text-highlight-enabled"), textHighlightWords:$("text-highlight-words"), textHighlightColor:$("text-highlight-color"), textFirstPassEnabled:$("text-first-pass-enabled"), textFirstPassColor:$("text-first-pass-color"), textStartX:$("text-start-x"), textStartY:$("text-start-y"), lockSentence:$("lock-sentence"), lockedSentence:$("locked-sentence"), boldWords:$("bold-words"), findText:$("find-text"), replaceText:$("replace-text"),
     brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"),
     colorMode:$("color-mode"), palettePreset:$("palette-preset"), paletteSize:$("palette-size"), backgroundStyle:$("background-style"), foreground:$("foreground"), palette2:$("palette-2"), palette3:$("palette-3"), palette4:$("palette-4"), palette5:$("palette-5"), background:$("background"), background2:$("background-2"), hardBlackWhite:$("hard-black-white"),
-    effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), tickVoice:$("tick-voice"), previewEngine:$("preview-engine"), prompt:$("prompt"),
+    effect:$("effect"), effectPower:$("effect-power"), outputScale:$("output-scale"), aspectRatio:$("aspect-ratio"), outputResolution:$("output-resolution"), customResolution:$("custom-resolution"), resolveSound:$("resolve-sound"), audioLevel:$("audio-level"), tickVoice:$("tick-voice"), previewEngine:$("preview-engine"),
     pattern:$("pattern"), patternTarget:$("pattern-target"), patternTile:$("pattern-tile"), borderStyle:$("border-style"), borderMotion:$("border-motion"), divider:$("divider"), safeArea:$("safe-area"), posterMode:$("poster-mode"), posterTitle:$("poster-title"), posterFooter:$("poster-footer"), asciiColumns:$("ascii-columns"), asciiBorder:$("ascii-border"), muteFirstTick:$("mute-first-tick"), muteFinalTick:$("mute-final-tick")
   };
   // Do not let browser form restoration boot the tool into someone's previous
@@ -32,6 +32,10 @@
     return {controls,viewport:{...state.viewport}};
   }
   function updateHistoryButtons(){ $("undo").disabled=!history.past.length; $("redo").disabled=!history.future.length; }
+  function setPlayLabel(label){
+    $("play").textContent=label;
+    $("header-play").textContent=label==="REPLAY"?"↻ REPLAY":label==="PAUSE"?"Ⅱ PAUSE":"▶ PLAY";
+  }
   function resetHistory(){ history.past=[]; history.future=[]; history.current=snapshotEditor(); updateHistoryButtons(); }
   function commitHistory(){
     if(history.restoring) return; const next=snapshotEditor(); if(JSON.stringify(next)===JSON.stringify(history.current)) return;
@@ -157,7 +161,7 @@
   const clipDuration=()=>isAnimated()?buildLeadSeconds()+buildSeconds()+buildHoldSeconds():buildSeconds();
   const buildTimeFromTimeline=elapsed=>Math.max(0,Math.min(buildSeconds(),elapsed-buildLeadSeconds()));
   function finishAnimation(){
-    if(state.completed) return; state.playing=false; state.completed=true; $("play").textContent="REPLAY";
+    if(state.completed) return; state.playing=false; state.completed=true; setPlayLabel("REPLAY");
     state.pausedElapsed=clipDuration();
     if(state.sourceKind==="video") state.media.pause(); stopResolveAudio(); transport.textContent="BUILD COMPLETE — FINAL FRAME HELD";
   }
@@ -233,14 +237,28 @@
     });
     return {sourceIndex,index,char,wordIndex:wordInCycle<0?-1:Math.floor(sourceIndex/text.length)*words.length+wordInCycle,firstPass:sourceIndex>=0&&sourceIndex<text.length,highlighted};
   }
-  function textFlowAnchor(data){
-    const anchorX=Math.max(0,Math.min(state.analyserW-1,Math.round(Number(ui.textStartX.value)||0))), anchorY=Math.max(0,Math.min(state.analyserH-1,Math.round(Number(ui.textStartY.value)||0))); let visible=0;
-    for(let y=0;y<=anchorY;y++) for(let x=0;x<state.analyserW;x++){
-      if(y===anchorY&&x>=anchorX) break;
-      const i=(y*state.analyserW+x)*4;
-      if(adjusted(data[i],data[i+1],data[i+2])>=.07) visible++;
+  function textFlowValue(data,x,y,mode=ui.mode.value){
+    const i=(y*state.analyserW+x)*4; let v=adjusted(data[i],data[i+1],data[i+2]);
+    if(ui.edges.checked || ["edge","edge-skeleton"].includes(mode)){
+      const right=x+1<state.analyserW?i+4:i, down=y+1<state.analyserH?i+state.analyserW*4:i;
+      const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500;
+      v=Math.max(v*.28,Math.min(1,edge*1.8));
     }
-    return visible;
+    return v;
+  }
+  function visibleFlowCells(data,mode=ui.mode.value){
+    const cells=[];
+    for(let y=0;y<state.analyserH;y++) for(let x=0;x<state.analyserW;x++) if(textFlowValue(data,x,y,mode)>=.07) cells.push({x,y});
+    return cells;
+  }
+  function textFlowAnchor(data,mode=ui.mode.value,cells=visibleFlowCells(data,mode)){
+    if(!cells.length) return 0;
+    const minX=Math.min(...cells.map(cell=>cell.x)), maxX=Math.max(...cells.map(cell=>cell.x)), minY=Math.min(...cells.map(cell=>cell.y)), maxY=Math.max(...cells.map(cell=>cell.y));
+    const xPercent=Math.max(0,Math.min(100,Number(ui.textStartX.value)||0)), yPercent=Math.max(0,Math.min(100,Number(ui.textStartY.value)||0));
+    const targetX=minX+(maxX-minX)*xPercent/100, targetY=minY+(maxY-minY)*yPercent/100;
+    let nearestIndex=0, nearestDistance=Infinity;
+    cells.forEach((cell,index)=>{const distance=(cell.x-targetX)**2+(cell.y-targetY)**2;if(distance<nearestDistance){nearestDistance=distance;nearestIndex=index;}});
+    return nearestIndex;
   }
   function textFoundationColor(flowIndex){
     const meta=textFlowMeta(flowIndex); if(!meta) return null;
@@ -301,23 +319,66 @@
         else char=scratch[Math.min(scratch.length-1,Math.max(0,Math.floor((bright+(seed(x+attempt,y-attempt)-.5)*.7)*(scratch.length-1))))];
       }
     }
+    if((mode==="signal-jam" || mode==="character-swap") && progress<.93 && char!==" "){
+      const wrong="01/\\|[]{}<>+-=xX#?";
+      const lock=mode==="character-swap"?progress*.98:progress*.82;
+      if(seed(x+37,y+53)>lock) char=wrong[Math.floor(seed(y+91,x+17)*wrong.length)];
+    }
     if(["fill","both"].includes(ui.patternTarget.value) && ui.pattern.value!=="none" && char!==" ") char=patternGlyph(x,y,bright) || char;
     return char;
   }
   function adjusted(r,g,b){ let v=(.2126*r+.7152*g+.0722*b)/255; v=(v-.5)*(Number(ui.contrast.value)/100)+.5+Number(ui.brightness.value)/100; v=Math.max(0,Math.min(1,v)); return ui.invert.checked?1-v:v; }
-  function revealFor(x,y,b,t,mode){ const p=Math.min(1,t/buildSeconds()); const random=seed(x,y); const dir=ui.direction.value;
-    let sweep=dir==="left"?x/state.analyserW:dir==="right"?1-x/state.analyserW:dir==="top"?y/state.analyserH:dir==="bottom"?1-y/state.analyserH:Math.min(1,random*.62 + (1-b)*.38);
+  function revealFor(x,y,b,t,mode){
+    const p=Math.min(1,t/buildSeconds()), random=seed(x,y), w=Math.max(1,state.analyserW), h=Math.max(1,state.analyserH), nx=x/Math.max(1,w-1), ny=y/Math.max(1,h-1), cx=nx-.5, cy=ny-.5;
+    const clamp=value=>Math.max(0,Math.min(1,value));
+    const radial=Math.hypot(cx,cy)/.7072, manhattan=(Math.abs(cx)+Math.abs(cy));
+    const dir=ui.direction.value;
+    const sweep=dir==="left"?nx:dir==="right"?1-nx:dir==="top"?ny:dir==="bottom"?1-ny:Math.min(1,random*.62+(1-b)*.38);
     if(mode==="pixel-sort") return p>=sweep;
-    if(["scanline","line-printer"].includes(mode)) return p>=y/state.analyserH;
+    if(["scanline","line-printer"].includes(mode)) return p>=ny;
     if(mode==="threshold-flood") return p>=1-b;
-    if(mode==="horizontal-sync") return p>=Math.max(0,Math.min(1,y/state.analyserH+(seed(x,3)-.5)*.14));
-    if(mode==="terminal-rain") return p>=Math.min(1,y/state.analyserH*.72+seed(x,19)*.3);
-    if(["edge","edge-skeleton"].includes(mode)) return p>=Math.min(1,random*.35+(1-b)*.1);
+    if(mode==="horizontal-sync") return p>=clamp(ny+(seed(x,3)-.5)*.14);
+    if(mode==="terminal-rain") return p>=clamp(ny*.72+seed(x,19)*.3);
+    if(["edge","edge-skeleton"].includes(mode)) return p>=clamp(random*.35+(1-b)*.1);
     if(mode==="word-reveal") return p>=seed(Math.floor(x/7),Math.floor(y/2));
     if(mode==="text-typewriter") return true;
     if(mode==="compression-decode"){const block=Math.max(1,8-Math.floor(p*7));return p>=seed(Math.floor(x/block),Math.floor(y/block));}
-    if(mode==="radial-assembly") return p>=Math.min(1,Math.hypot(x-state.analyserW/2,y-state.analyserH/2)/(Math.hypot(state.analyserW,state.analyserH)/2));
-    if(mode==="diagonal-wipe") return p>=Math.min(1,(x+y)/(state.analyserW+state.analyserH));
+    if(mode==="radial-assembly") return p>=radial;
+    if(mode==="diagonal-wipe") return p>=clamp((nx+ny)/2);
+
+    // New modes. Each one has its own spatial rule, rather than being a renamed
+    // random dissolve. Keeping thresholds deterministic also makes exported
+    // builds match previews frame-for-frame.
+    if(mode==="center-spark") return p>=clamp(radial*.86+random*.14);
+    if(mode==="corner-spiral"){const angle=(Math.atan2(y,x)+Math.PI)/(Math.PI*2);return p>=clamp((Math.hypot(nx,ny)/1.414)*.58+angle*.42);}
+    if(mode==="checker-lock") return p>=clamp(((x+y)&1)*.18+seed(Math.floor(x/2),Math.floor(y/2))*.82);
+    if(mode==="diamond-wave") return p>=clamp(manhattan*.82+random*.18);
+    if(mode==="shutter-scan"){const slat=Math.floor(ny*12)%2;return p>=clamp(ny*.72+slat*.18+random*.1);}
+    if(mode==="noise-dissolve") return p>=clamp(random*.9+(1-b)*.1);
+    if(mode==="orbit-scan"){const angle=(Math.atan2(cy,cx)+Math.PI)/(Math.PI*2);return p>=clamp(angle*.75+radial*.25);}
+    if(mode==="gravity-drop") return p>=clamp(ny*.82+random*.18);
+    if(mode==="gravity-rise") return p>=clamp((1-ny)*.82+random*.18);
+    if(mode==="band-sweep"){const band=Math.abs(ny-(p*1.15-.08));return band<.13+random*.09 || p>=ny+.14;}
+    if(mode==="contour-bands") return p>=clamp(1-Math.floor(b*7)/6*.82+random*.18);
+    if(mode==="luma-stairs") return p>=clamp(b*.88+random*.12);
+    if(mode==="inverse-luma") return p>=clamp((1-b)*.88+random*.12);
+    if(mode==="halftone-resolve") return p>=clamp(seed(Math.floor(x/3),Math.floor(y/3))*.58+(1-b)*.42);
+    if(mode==="vein-grow") return p>=clamp(Math.min(Math.abs(Math.sin(nx*18+ny*7)),Math.abs(Math.sin(ny*15-nx*5)))*.52+radial*.32+random*.16);
+    if(mode==="island-merge") return p>=clamp(seed(Math.floor(x/5),Math.floor(y/4))*.58+radial*.42);
+    if(mode==="mirror-fold") return p>=clamp(Math.abs(nx-.5)*1.68+random*.16);
+    if(mode==="quadrant-lock"){const quadrant=(nx>.5?1:0)+(ny>.5?2:0);return p>=clamp(quadrant*.2+seed(x,y)*.2);}
+    if(mode==="binary-search"){const scale=Math.max(1,Math.ceil((1-p)*8));return p>=clamp(seed(Math.floor(x/scale),Math.floor(y/scale))*.72+random*.08);}
+    if(mode==="signal-jam") return p>=clamp(random*.66+Math.abs(Math.sin(nx*42+ny*9))*.2+(1-b)*.14);
+    if(mode==="raster-scrub"){const phase=(p*1.7)%1;return p>.58?true:Math.abs(ny-phase)<.085+random*.05;}
+    if(mode==="barcode-scan") return p>=clamp(nx*.78+(Math.floor(x/2)%3)*.07+random*.1);
+    if(mode==="staggered-rows") return p>=clamp(ny*.74+(Math.floor(y)%4)*.05+random*.08);
+    if(mode==="staggered-columns") return p>=clamp(nx*.74+(Math.floor(x)%4)*.05+random*.08);
+    if(mode==="diagonal-cross") return p>=clamp(Math.min(Math.abs(nx-ny),Math.abs(nx-(1-ny)))*1.5+random*.18);
+    if(mode==="wavefront") return p>=clamp((ny+Math.sin(nx*Math.PI*3)*.16)*.76+random*.08);
+    if(mode==="morse-pulse"){const pulse=(Math.floor(nx*13+ny*5)%4===0)?0:.24;return p>=clamp(ny*.62+pulse+random*.12);}
+    if(mode==="character-swap") return p>=clamp(random*.76+radial*.16);
+    if(mode==="film-develop") return p>=clamp((1-b)*.68+ny*.16+random*.16);
+    if(mode==="scan-converge") return p>=clamp(Math.abs(ny-.5)*1.72+random*.12);
     return p>=random;
   }
   function effectiveGlyphSize(time){
@@ -418,13 +479,14 @@
     fillBackground(w,h); ctx.font=`${Math.max(1,cellH)}px monospace`; ctx.textBaseline="top";
     const mode=ui.mode.value, data=frame.data, glitch=Number(ui.glitch.value)/100;
     const isTextTypewriter=mode==="text-typewriter"&&ui.glyphSource.value==="text"&&ui.textLayout.value==="flow";
-    const isTextFlow=ui.glyphSource.value==="text"&&ui.textLayout.value==="flow", textFlowStart=isTextFlow?textFlowAnchor(data):0;
-    let typewriterTotal=0; if(isTextTypewriter){ for(let i=0;i<data.length;i+=4) if(adjusted(data[i],data[i+1],data[i+2])>=.07) typewriterTotal++; }
+    const isTextFlow=ui.glyphSource.value==="text"&&ui.textLayout.value==="flow";
+    const textFlowCells=isTextFlow?visibleFlowCells(data,mode):[];
+    const textFlowStart=isTextFlow?textFlowAnchor(data,mode,textFlowCells):0;
+    const typewriterTotal=isTextTypewriter?textFlowCells.length:0;
     const typewriterTarget=Math.floor(Math.max(0,Math.min(1,t/buildSeconds()))*typewriterTotal);
     let visibleGlyphs=0, darkAdded=0, brightAdded=0, textFlowIndex=0; const liveLines=ui.previewEngine.value==="text"?[]:null;
     for(let y=0;y<state.analyserH;y++) { let liveLine=""; for(let x=0;x<state.analyserW;x++){
-      const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
-      if(ui.edges.checked || ["edge","edge-skeleton"].includes(mode)) { const right=x+1<state.analyserW?i+4:i, down=y+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
+      const i=(y*state.analyserW+x)*4, r=data[i],g=data[i+1],b=data[i+2]; const v=textFlowValue(data,x,y,mode);
       const useTextFlow=ui.glyphSource.value==="text"&&ui.textLayout.value==="flow"&&v>=.07;
       const flowIndex=useTextFlow?textFlowIndex:null, sourceFlowIndex=flowIndex===null?null:flowIndex-textFlowStart; if(isTextTypewriter&&useTextFlow)textFlowIndex++;
       const shown=isTextTypewriter?(useTextFlow&&flowIndex<typewriterTarget):(mode==="direct" || mode==="glyph-build" || mode==="coarse-mosaic" || mode==="iterative-draft" || revealFor(x,y,v,t,mode)); if(!shown){if(liveLines)liveLine+=" ";continue;}
@@ -448,10 +510,10 @@
     // Every new source begins as an inspectable still, regardless of any form
     // values the browser restored from a previous session.
     leaveTextCanvas(); ui.previewEngine.value="text";
-    ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; ui.aspectRatio.value="source"; ui.outputResolution.value="native"; fitViewport(false); updateReadouts(); state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; $("play").textContent="PLAY"; stopResolveAudio();
+    ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; ui.aspectRatio.value="source"; ui.outputResolution.value="native"; fitViewport(false); updateReadouts(); state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; setPlayLabel("PLAY"); stopResolveAudio();
     const isVideo=file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv)$/i.test(file.name); const el=isVideo?document.createElement("video"):new Image();
     state.media=el; state.sourceKind=isVideo?"video":"image"; el.src=state.fileURL; status.textContent=`LOADING // ${file.name.toUpperCase()}`;
-    const ready=()=>{ state.imageReady=true; empty.hidden=true; state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; $("play").textContent="PLAY"; state.started=performance.now(); resetHistory(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="STATIC PREVIEW — PICK A STYLE TO ANIMATE"; if(isVideo){el.loop=true;el.muted=true;el.pause();el.currentTime=0;} };
+    const ready=()=>{ state.imageReady=true; empty.hidden=true; state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; setPlayLabel("PLAY"); state.started=performance.now(); resetHistory(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="STATIC PREVIEW — PICK A STYLE TO ANIMATE"; if(isVideo){el.loop=true;el.muted=true;el.pause();el.currentTime=0;} };
     if(isVideo){ el.addEventListener("loadeddata",ready,{once:true}); el.addEventListener("error",()=>status.textContent="UNSUPPORTED VIDEO CODEC",{once:true}); } else { el.onload=ready; el.onerror=()=>status.textContent="UNSUPPORTED IMAGE"; }
   }
   function applyCharacterLibrary(name){
@@ -473,29 +535,7 @@
     if(announce) transport.textContent="HARD BLACK / WHITE — PURE #000 + #FFF";
   }
   function markPaletteCustom(){ if(ui.palettePreset.value!=="source") ui.palettePreset.value="custom"; }
-  function applyPrompt(){ const p=ui.prompt.value.toLowerCase(); const set=(key,val)=>{ ui[key].value=val; };
-    if(/glyph.?collapse|large.?glyph|glyph.?build|coarse.?to.?fine/.test(p))set("mode","glyph-build"); else if(/pixel.?sort|sort sweep/.test(p))set("mode","pixel-sort"); else if(/scan(line)?|develop/.test(p))set("mode","scanline"); else if(/edge/.test(p))set("mode","edge"); else if(/terminal|decode|resolve|build/.test(p))set("mode",/terminal/.test(p)?"terminal":"decode");
-    if(/rain/.test(p))set("effect","rain"); if(/particle|dust|stars?/.test(p))set("effect","particles"); if(/waveform|audio wave|signal wave/.test(p))set("effect","waveform"); if(/orb|sphere|3d ascii/.test(p))set("effect","orb");
-    if(/auto.?color|source.?color/.test(p))set("colorMode","source");
-    if(/red|vermilion/.test(p)){set("colorMode","mono");set("foreground","#ef4035");markPaletteCustom();} if(/blue|cobalt/.test(p)){set("colorMode","mono");set("foreground","#4169e1");markPaletteCustom();} if(/green|phosphor/.test(p)){set("colorMode","mono");set("foreground","#9dff68");markPaletteCustom();} if(/white|mono(chrome)?/.test(p)){set("colorMode","mono");set("foreground","#f5f5f5");markPaletteCustom();}
-    if(/slow/.test(p))set("duration","7"); if(/fast|rapid/.test(p))set("duration","1.5"); if(/low fps|choppy|psx/.test(p))set("fps","12"); if(/crt|scanline/.test(p))set("scanlines","55"); if(/glitch|corrupt/.test(p))set("glitch","50"); if(/clean|minimal/.test(p)){set("glitch","0");set("scanlines","0");}
-    updateReadouts(); transport.textContent="PROMPT APPLIED"; commitHistory();
-  }
-  function applyPreset(name){
-    const set=(key,val)=>{ui[key].value=val;};
-    set("effect","none"); set("glitch","0"); set("scanlines","0"); set("fps","30");
-    const presets={
-      direct:()=>set("mode","direct"),
-      build:()=>set("mode","decode"),
-      glyph:()=>{set("mode","glyph-build");set("fps","12");},
-      sort:()=>{set("mode","pixel-sort");set("direction","random");set("glitch","14");},
-      scan:()=>{set("mode","scanline");set("scanlines","38");},
-      terminal:()=>{set("mode","terminal");set("scanlines","45");set("glitch","22");},
-      rain:()=>{set("mode","terminal");set("colorMode","mono");set("foreground","#ef4035");markPaletteCustom();set("effect","rain");set("effectPower","65");set("glitch","35");set("scanlines","45");}
-    };
-    presets[name]?.(); state.started=performance.now(); state.playing=name!=="direct"; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"){ if(state.playing)state.media.play().catch(()=>{}); else state.media.pause(); } syncResolveAudio(); updateReadouts(); transport.textContent=name==="direct"?"STATIC PREVIEW":"BUILDING — WILL HOLD ON FINAL FRAME"; commitHistory();
-  }
-  function restart(){ state.started=performance.now(); state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; $("play").textContent=state.playing?"PAUSE":"PLAY"; if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent=state.playing?"RESTARTED — BUILDING":"RESTARTED — PRESS PLAY"; }
+  function restart(){ state.started=performance.now(); state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; setPlayLabel(state.playing?"PAUSE":"PLAY"); if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent=state.playing?"RESTARTED — BUILDING":"RESTARTED — PRESS PLAY"; }
   function drawTextCanvasFrame(){
     const text=readTextCanvas(), lines=text.split("\n"), longest=Math.max(1,...lines.map(line=>line.length));
     const [w,h]=outputDimensions(), padding=Math.round(Math.min(w,h)*.055), maxLine=Math.max(1,w-padding*2), maxHeight=Math.max(1,h-padding*2);
@@ -509,15 +549,17 @@
     if(!state.imageReady) return "";
     const t=state.completed?buildSeconds():state.playing?getTime():buildTimeFromTimeline(state.pausedElapsed), frame=sourceFrame(t); if(!frame) return "";
     const data=frame.data, mode=ui.mode.value, lines=[], requested=ui.asciiColumns.value==="source"?state.analyserW:Number(ui.asciiColumns.value), exportW=Math.max(1,requested), exportH=Math.max(1,Math.round(state.analyserH*exportW/state.analyserW)); let textFlowIndex=0;
-    const isTextFlow=ui.glyphSource.value==="text"&&ui.textLayout.value==="flow", textFlowStart=isTextFlow&&exportW===state.analyserW?textFlowAnchor(data):0;
-    const isTextTypewriter=mode==="text-typewriter"&&ui.glyphSource.value==="text"&&ui.textLayout.value==="flow"; let typewriterTotal=0;
-    if(isTextTypewriter){for(let i=0;i<data.length;i+=4)if(adjusted(data[i],data[i+1],data[i+2])>=.07)typewriterTotal++;}
+    const isTextFlow=ui.glyphSource.value==="text"&&ui.textLayout.value==="flow";
+    const sourceFlowCells=isTextFlow?visibleFlowCells(data,mode):[];
+    const sourceTextAnchor=isTextFlow?textFlowAnchor(data,mode,sourceFlowCells):0;
+    const textFlowStart=exportW===state.analyserW?sourceTextAnchor:Math.round(sourceTextAnchor*exportW/state.analyserW);
+    const isTextTypewriter=mode==="text-typewriter"&&ui.glyphSource.value==="text"&&ui.textLayout.value==="flow";
+    const typewriterTotal=isTextTypewriter?(exportW===state.analyserW?sourceFlowCells.length:Math.round(sourceFlowCells.length*exportW/state.analyserW)):0;
     const typewriterTarget=Math.floor(Math.max(0,Math.min(1,t/buildSeconds()))*typewriterTotal);
     for(let y=0;y<exportH;y++){
       let line="";
       for(let x=0;x<exportW;x++){
-        const sx=Math.min(state.analyserW-1,Math.floor(x/exportW*state.analyserW)), sy=Math.min(state.analyserH-1,Math.floor(y/exportH*state.analyserH)), i=(sy*state.analyserW+sx)*4, r=data[i],g=data[i+1],b=data[i+2]; let v=adjusted(r,g,b);
-        if(ui.edges.checked || ["edge","edge-skeleton"].includes(mode)) { const right=sx+1<state.analyserW?i+4:i, down=sy+1<state.analyserH?i+state.analyserW*4:i; const edge=(Math.abs(data[i]-data[right])+Math.abs(data[i+1]-data[right+1])+Math.abs(data[i+2]-data[right+2])+Math.abs(data[i]-data[down])+Math.abs(data[i+1]-data[down+1])+Math.abs(data[i+2]-data[down+2]))/500; v=Math.max(v*.28,Math.min(1,edge*1.8)); }
+        const sx=Math.min(state.analyserW-1,Math.floor(x/exportW*state.analyserW)), sy=Math.min(state.analyserH-1,Math.floor(y/exportH*state.analyserH)), i=(sy*state.analyserW+sx)*4, r=data[i],g=data[i+1],b=data[i+2]; const v=textFlowValue(data,sx,sy,mode);
         const useTextFlow=ui.glyphSource.value==="text"&&ui.textLayout.value==="flow"&&v>=.07;
         const flowIndex=useTextFlow?textFlowIndex:null, sourceFlowIndex=flowIndex===null?null:flowIndex-textFlowStart; if(isTextTypewriter&&useTextFlow)textFlowIndex++;
         const shown=isTextTypewriter?(useTextFlow&&flowIndex<typewriterTarget):(mode==="direct" || ["glyph-build","coarse-mosaic","iterative-draft"].includes(mode) || revealFor(sx,sy,v,t,mode)); if(!shown){ line+=" "; continue; }
@@ -560,11 +602,9 @@
   drop.addEventListener("wheel",e=>{
     if(!state.imageReady || e.target.closest("button, select, input, textarea, label, [contenteditable='true']")) return; e.preventDefault(); const before=state.viewport.zoom, factor=e.deltaY<0?1.12:1/1.12; state.viewport.zoom=Math.max(.25,Math.min(8,before*factor)); if(before===state.viewport.zoom) return; applyViewport(); clearTimeout(viewportCommitTimer); viewportCommitTimer=setTimeout(commitHistory,220);
   },{passive:false});
-  $("apply-prompt").onclick=applyPrompt; $("restart").onclick=restart; $("snapshot").onclick=snapshot; $("record").onclick=record;
+  $("restart").onclick=restart; $("snapshot").onclick=snapshot; $("record").onclick=record;
   $("generate-ascii").onclick=generateAscii; $("copy-ascii").onclick=copyAscii; $("download-ascii").onclick=downloadAscii; $("download-html").onclick=downloadHTML; $("download-md").onclick=downloadMarkdown; $("download-ansi").onclick=downloadANSI;
   document.querySelectorAll("[data-control-page]").forEach(button=>button.onclick=()=>setControlPage(button.dataset.controlPage));
-  document.querySelectorAll("[data-preset]").forEach(button=>button.onclick=()=>applyPreset(button.dataset.preset));
-  document.querySelectorAll("[data-prompt]").forEach(button=>button.onclick=()=>{ui.prompt.value=button.dataset.prompt;applyPrompt();});
   ui.charsetPreset.onchange=()=>applyCharacterLibrary(ui.charsetPreset.value);
   ui.charset.oninput=()=>{ui.charsetPreset.value="custom";};
   ui.palettePreset.onchange=()=>applyPalettePreset(ui.palettePreset.value);
@@ -595,16 +635,29 @@
     state.lastRender=0;
   };
   [ui.textHighlightEnabled,ui.textHighlightWords,ui.textHighlightColor,ui.textFirstPassEnabled,ui.textFirstPassColor,ui.textStartX,ui.textStartY].forEach(control=>control.addEventListener("input",refreshTextFoundation));
+  function setTextAnchor(control,value){
+    control.value=String(Math.max(0,Math.min(100,Math.round(value))));
+    refreshTextFoundation();
+  }
+  document.querySelectorAll("[data-anchor-x], [data-anchor-y]").forEach(button=>button.onclick=()=>{
+    const isX=Object.hasOwn(button.dataset,"anchorX");
+    const control=isX?ui.textStartX:ui.textStartY;
+    setTextAnchor(control,Number(control.value||0)+Number(isX?button.dataset.anchorX:button.dataset.anchorY));
+    commitHistory();
+  });
+  [ui.textStartX,ui.textStartY].forEach(control=>control.addEventListener("change",()=>setTextAnchor(control,Number(control.value))));
   [ui.aspectRatio,ui.outputResolution,ui.customResolution,ui.outputScale].forEach(control=>control.addEventListener("input",()=>{ state.lastRender=0; }));
-  ui.mode.onchange=()=>{ state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; if(ui.mode.value==="text-typewriter"&&ui.customText.value.trim()){ui.glyphSource.value="text";ui.textLayout.value="flow";ui.previewEngine.value="canvas";leaveTextCanvas();} if(ui.mode.value==="direct"){ state.playing=false; stopResolveAudio(); $("play").textContent="PLAY"; transport.textContent="STATIC PREVIEW"; } else transport.textContent=ui.mode.value==="text-typewriter"?"TEXT TYPEWRITER READY — PRESS PLAY":"STYLE SET — PRESS PLAY"; };
-  $("play").onclick=()=>{
-    if(!isAnimated()){ state.playing=false; state.completed=false; state.pausedElapsed=0; $("play").textContent="PLAY"; stopResolveAudio(); transport.textContent="STATIC PREVIEW — CHOOSE A BUILD STYLE TO ANIMATE"; return; }
+  ui.mode.onchange=()=>{ state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; if(ui.mode.value==="text-typewriter"&&ui.customText.value.trim()){ui.glyphSource.value="text";ui.textLayout.value="flow";ui.previewEngine.value="canvas";leaveTextCanvas();} if(ui.mode.value==="direct"){ state.playing=false; stopResolveAudio(); setPlayLabel("PLAY"); transport.textContent="STATIC PREVIEW"; } else transport.textContent=ui.mode.value==="text-typewriter"?"TEXT TYPEWRITER READY — PRESS PLAY":"STYLE SET — PRESS PLAY"; };
+  const toggleBuildPlayback=()=>{
+    if(!isAnimated()){ state.playing=false; state.completed=false; state.pausedElapsed=0; setPlayLabel("PLAY"); stopResolveAudio(); transport.textContent="STATIC PREVIEW — CHOOSE A BUILD STYLE TO ANIMATE"; return; }
     if(state.completed){ state.completed=false; state.pausedElapsed=0; state.started=performance.now(); state.playing=true; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; }
     else if(state.playing){ state.pausedElapsed+=(performance.now()-state.started)/1000; state.playing=false; }
     else { state.started=performance.now(); state.playing=true; }
-    $("play").textContent=state.playing?"PAUSE":"PLAY"; transport.textContent=state.playing?"BUILDING":"PAUSED";
+    setPlayLabel(state.playing?"PAUSE":"PLAY"); transport.textContent=state.playing?"BUILDING":"PAUSED";
     if(state.sourceKind==="video") state.playing?state.media.play():state.media.pause(); syncResolveAudio();
   };
+  $("play").onclick=toggleBuildPlayback;
+  $("header-play").onclick=toggleBuildPlayback;
   ui.resolveSound.onchange=()=>syncResolveAudio();
   ui.previewEngine.onchange=()=>{
     if(ui.previewEngine.value==="manual"){
@@ -642,5 +695,5 @@
     if(e.altKey&&e.key==="ArrowRight"){ e.preventDefault(); redo(); }
   });
   $("toggle-ui").onclick=()=>{document.body.classList.toggle("ui-hidden");$("toggle-ui").textContent=document.body.classList.contains("ui-hidden")?"SHOW UI":"HIDE UI";};
-  setControlPage("start"); updateTextCount(); enterTextCanvas("",false); resetHistory(); applyViewport(); render();
+  setControlPage("look"); updateTextCount(); enterTextCanvas("",false); resetHistory(); applyViewport(); render();
 })();

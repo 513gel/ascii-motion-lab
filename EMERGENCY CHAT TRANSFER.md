@@ -1,6 +1,6 @@
 # EMERGENCY CHAT TRANSFER
 
-Last updated: `2026-08-26 America/New_York`
+Last updated: `2026-08-27 America/New_York`
 
 ## Objective
 
@@ -218,11 +218,35 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   Preview, sound scheduling, final lock, and WebM duration share those values.
 - Text Foundation supports permanent colored words/phrases, plus an optional
   separate color for exactly the first full source pass. First-pass origin X/Y
-  is measured in visible source-grid cells: text before that anchor wraps as
-  buffer repetitions while the main imported passage begins at the anchor.
+  is now **subject-relative percentage** (0/0 = visible subject top-left,
+  50/50 = its center, 100/100 = lower-right). The app builds one shared map of
+  visible glyph cells, snaps the selected position to its nearest real glyph,
+  and uses that same map for render and copyable source-grid output. Text before
+  the anchor wraps as buffer repetitions while the main imported passage begins
+  at the selected glyph. The controls have four ±5% nudge buttons.
   These color passes intentionally switch TRUE TEXT to Canvas because literal
   terminal text cannot contain multiple colors; the copyable export remains
   the same underlying characters.
+- Text controls are deliberately split into four separate Text-page panels:
+  Character Library, Source Text, Flow + Repeat, Color Passes, and Text Tools.
+  The previous Quick Start and Type a Vibe shortcuts were removed entirely at
+  the user's request; the app now opens on Look. The control navigation is
+  Look / Text / Motion / Output.
+- The top header now has a global Play/Pause/Replay control next to Undo/Redo.
+  It shares the exact transport state with the Output-page button, so a build
+  can be played from any control page.
+- Build Style has 30 new deterministic modes in addition to the original set:
+  Center Spark, Corner Spiral, Checker Lock, Diamond Wave, Shutter Scan, Noise
+  Dissolve, Orbit Scan, Gravity Drop/Rise, Band Sweep, Contour Bands, Luma
+  Stairs, Inverse Luma, Halftone Resolve, Vein Grow, Island Merge, Mirror Fold,
+  Quadrant Lock, Binary Search, Signal Jam, Raster Scrub, Barcode Scan,
+  Staggered Rows/Columns, Diagonal Cross, Wavefront, Morse Pulse, Character
+  Swap, Film Develop, and Scan Converge. Each has its own deterministic spatial
+  reveal rule; Signal Jam and Character Swap also show temporary wrong glyphs
+  before resolving.
+- The local OmniFrame delegation skill was disabled recoverably at
+  `C:\Users\xxxye\.codex\skills\.disabled\omniframe-delegate` on 2026-08-27.
+  Do not invoke or reinstall it unless the user explicitly asks.
 - Text Typewriter's color trail is word-based: the currently typing word is
   vermilion; only the four immediately previous words retain any red, rapidly
   fading to almost-white by the fourth. All older text is white.
