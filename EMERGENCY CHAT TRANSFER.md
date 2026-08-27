@@ -233,8 +233,16 @@ from the home terminal as `/GLYPHSHIFT/`, alongside MOTTLE.
   the user's request; the app now opens on Look. The control navigation is
   Look / Text / Motion / Output.
 - The top header now has a global Play/Pause/Replay control next to Undo/Redo.
-  It shares the exact transport state with the Output-page button, so a build
-  can be played from any control page.
+  It now reads **Build** and shares the exact restart-only build action with
+  the Output-page button: every click starts the selected ASCII build again
+  from build frame zero. It does not play, pause, seek, or reset source media.
+- GIF/video source playback is a distinct timeline immediately below the
+  viewport. It has source Play/Pause, source restart, time readout, and scrub
+  controls; it remains independent from the build clock. Videos use native
+  HTML video playback with muted source audio. GIFs use browser `ImageDecoder`
+  frame decoding when available (up to 300 frames) for real pause/scrub/play
+  controls; an unsupported browser falls back to native GIF rendering with a
+  clear no-scrub message rather than pretending the timeline works.
 - Build Style has 30 new deterministic modes in addition to the original set:
   Center Spark, Corner Spiral, Checker Lock, Diamond Wave, Shutter Scan, Noise
   Dissolve, Orbit Scan, Gravity Drop/Rise, Band Sweep, Contour Bands, Luma

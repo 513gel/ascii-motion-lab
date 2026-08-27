@@ -2,6 +2,7 @@
   const $ = (id) => document.getElementById(id);
   const out = $("output"), ctx = out.getContext("2d"), sample = document.createElement("canvas"), sctx = sample.getContext("2d", { willReadFrequently:true });
   const fileInput=$("file-input"), textFileInput=$("text-file-input"), drop=$("drop-zone"), canvasWrap=$("canvas-wrap"), liveText=$("live-text"), empty=$("empty-state"), status=$("source-status"), transport=$("transport-status");
+  const sourceTimeline=$("source-timeline"), sourcePlay=$("source-play"), sourceRestart=$("source-restart"), sourceSeek=$("source-seek"), sourceTimeReadout=$("source-time-readout"), sourceTimelineNote=$("source-timeline-note");
   const ui = {
     mode:$("mode"), size:$("cell-size"), sizeManual:$("cell-size-manual"), startHold:$("start-hold"), duration:$("duration"), endHold:$("end-hold"), charset:$("charset"), charsetPreset:$("charset-preset"), glyphSource:$("glyph-source"), customText:$("custom-text"), textLayout:$("text-layout"), textScale:$("text-scale"), textBlend:$("text-blend"), noTextRepeat:$("no-text-repeat"), textHighlightEnabled:$("text-highlight-enabled"), textHighlightWords:$("text-highlight-words"), textHighlightColor:$("text-highlight-color"), textFirstPassEnabled:$("text-first-pass-enabled"), textFirstPassColor:$("text-first-pass-color"), textStartX:$("text-start-x"), textStartY:$("text-start-y"), lockSentence:$("lock-sentence"), lockedSentence:$("locked-sentence"), boldWords:$("bold-words"), findText:$("find-text"), replaceText:$("replace-text"),
     brightness:$("brightness"), contrast:$("contrast"), invert:$("invert"), edges:$("edges"), fps:$("fps"), direction:$("direction"), glitch:$("glitch"), scanlines:$("scanlines"),
@@ -12,7 +13,7 @@
   // Do not let browser form restoration boot the tool into someone's previous
   // glitch carnival. New sessions start as a clean, direct baseline.
   ui.glitch.value="0"; ui.scanlines.value="0"; ui.effect.value="none"; ui.effectPower.value="0"; ui.contrast.value="100"; ui.direction.value="left"; ui.noTextRepeat.checked=false; ui.hardBlackWhite.checked=false;
-  const state = { media:null, fileURL:null, sourceKind:null, playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1, lastVisibleGlyphs:0, generationTicks:0, firstTick:true, finalTick:false, textMode:true, manualText:"", viewport:{x:0,y:0,zoom:1} };
+  const state = { media:null, fileURL:null, sourceKind:null, sourcePlaying:false, sourceElapsed:0, sourceStarted:0, sourceDuration:0, sourceScrubbing:false, gifFrames:[], playing:false, completed:false, started:performance.now(), pausedElapsed:0, imageReady:false, recording:false, analyserW:0, analyserH:0, lastRender:0, lastSoundStep:-1, lastVisibleGlyphs:0, generationTicks:0, firstTick:true, finalTick:false, textMode:true, manualText:"", viewport:{x:0,y:0,zoom:1} };
   const outputNames={textScale:"text-scale-out",textBlend:"text-blend-out",brightness:"brightness-out",contrast:"contrast-out",glitch:"glitch-out",scanlines:"scanlines-out",effectPower:"effect-power-out",outputScale:"output-scale-out",audioLevel:"audio-level-out",safeArea:"safe-area-out"};
   const updateReadouts=()=>Object.entries(outputNames).forEach(([key,id])=>$(id).textContent=key==="duration"?`${ui[key].value}s`:key==="outputScale"?`${ui[key].value}%`:ui[key].value);
   function setGlyphSize(value,announce=false){
@@ -33,8 +34,9 @@
   }
   function updateHistoryButtons(){ $("undo").disabled=!history.past.length; $("redo").disabled=!history.future.length; }
   function setPlayLabel(label){
-    $("play").textContent=label;
-    $("header-play").textContent=label==="REPLAY"?"↻ REPLAY":label==="PAUSE"?"Ⅱ PAUSE":"▶ PLAY";
+    const buildLabel=label==="REPLAY"?"↻ BUILD AGAIN":label==="PAUSE"?"↻ RESTART BUILD":"▶ BUILD";
+    $("play").textContent=buildLabel;
+    $("header-play").textContent=buildLabel;
   }
   function resetHistory(){ history.past=[]; history.future=[]; history.current=snapshotEditor(); updateHistoryButtons(); }
   function commitHistory(){
@@ -136,7 +138,61 @@
   }
 
   function seed(x,y){ let n=(x*374761393+y*668265263)>>>0; n=(n^(n>>>13))*1274126177; return ((n^(n>>>16))>>>0)/4294967296; }
-  function mediaDimensions(){ if(!state.media) return [960,540]; return state.sourceKind==="video"?[state.media.videoWidth||960,state.media.videoHeight||540]:[state.media.naturalWidth||960,state.media.naturalHeight||540]; }
+  function releaseGifFrames(){ state.gifFrames.forEach(frame=>{try{frame.bitmap.close?.();}catch{}}); state.gifFrames=[]; }
+  const playableSource=()=>state.sourceKind==="video" || state.sourceKind==="gif";
+  function sourceDuration(){
+    if(state.sourceKind==="video") return Number.isFinite(state.media?.duration)?state.media.duration:0;
+    return state.sourceKind==="gif"?state.sourceDuration:0;
+  }
+  function currentSourceTime(now=performance.now()){
+    const duration=sourceDuration();
+    if(!duration) return 0;
+    if(state.sourceKind==="video") return Math.max(0,Math.min(duration,state.media.currentTime||0));
+    const elapsed=state.sourcePlaying?state.sourceElapsed+(now-state.sourceStarted)/1000:state.sourceElapsed;
+    return ((elapsed%duration)+duration)%duration;
+  }
+  function sourceDrawable(now=performance.now()){
+    if(state.sourceKind!=="gif" || !state.gifFrames.length) return state.media;
+    const time=currentSourceTime(now); const frame=state.gifFrames.find(entry=>time<entry.end) || state.gifFrames.at(-1);
+    return frame?.bitmap||state.media;
+  }
+  function formatSourceTime(seconds){ const safe=Math.max(0,Number(seconds)||0), minutes=Math.floor(safe/60), remainder=(safe%60).toFixed(1).padStart(4,"0"); return `${minutes}:${remainder}`; }
+  function refreshSourceTimeline(now=performance.now()){
+    const active=playableSource(); sourceTimeline.hidden=!active;
+    if(!active) return;
+    const duration=sourceDuration(), time=currentSourceTime(now), ready=duration>0;
+    sourceSeek.disabled=!ready; sourceRestart.disabled=!ready; sourcePlay.disabled=!ready;
+    sourceSeek.max=String(Math.max(.01,duration||1)); if(!state.sourceScrubbing) sourceSeek.value=String(Math.min(duration||0,time));
+    sourceTimeReadout.textContent=`${formatSourceTime(time)} / ${formatSourceTime(duration)}`;
+    sourcePlay.textContent=state.sourcePlaying?"Ⅱ PAUSE SOURCE":"▶ PLAY SOURCE";
+    sourceTimelineNote.textContent=state.sourcePlaying?"SOURCE PLAYING — BUILD STAYS INDEPENDENT":state.sourceKind==="gif"?"GIF PAUSED — SCRUB OR PRESS PLAY":"VIDEO PAUSED — SCRUB OR PRESS PLAY";
+  }
+  function setSourceTime(seconds){
+    const duration=sourceDuration(), time=Math.max(0,Math.min(duration||0,Number(seconds)||0));
+    if(state.sourceKind==="video"&&state.media){state.media.currentTime=time;}
+    if(state.sourceKind==="gif"){state.sourceElapsed=time;state.sourceStarted=performance.now();}
+    state.lastRender=0; refreshSourceTimeline();
+  }
+  function toggleSourcePlayback(){
+    if(!playableSource() || !sourceDuration()) return;
+    if(state.sourcePlaying){
+      if(state.sourceKind==="gif") state.sourceElapsed=currentSourceTime();
+      if(state.sourceKind==="video") state.media.pause();
+      state.sourcePlaying=false;
+    }else{
+      if(state.sourceKind==="video") state.media.play().catch(()=>{state.sourcePlaying=false;refreshSourceTimeline();transport.textContent="SOURCE PLAYBACK WAS BLOCKED";});
+      if(state.sourceKind==="gif") state.sourceStarted=performance.now();
+      state.sourcePlaying=true;
+    }
+    refreshSourceTimeline();
+  }
+  function restartSource(){ setSourceTime(0); if(state.sourcePlaying&&state.sourceKind==="gif") state.sourceStarted=performance.now(); refreshSourceTimeline(); }
+  function mediaDimensions(){
+    if(!state.media) return [960,540];
+    if(state.sourceKind==="video") return [state.media.videoWidth||960,state.media.videoHeight||540];
+    if(state.sourceKind==="gif") return [state.media.width||960,state.media.height||540];
+    return [state.media.naturalWidth||960,state.media.naturalHeight||540];
+  }
   function aspectDimensions(){
     if(ui.aspectRatio.value==="source"){ const [w,h]=mediaDimensions(); return [w,h]; }
     return ui.aspectRatio.value.split(":").map(Number);
@@ -163,7 +219,7 @@
   function finishAnimation(){
     if(state.completed) return; state.playing=false; state.completed=true; setPlayLabel("REPLAY");
     state.pausedElapsed=clipDuration();
-    if(state.sourceKind==="video") state.media.pause(); stopResolveAudio(); transport.textContent="BUILD COMPLETE — FINAL FRAME HELD";
+    stopResolveAudio(); transport.textContent="BUILD COMPLETE — FINAL FRAME HELD";
   }
   function getTime(){
     const seconds=buildSeconds(); if(!isAnimated()) return 0;
@@ -389,12 +445,12 @@
     return Math.max(target,Math.round(180+(target-180)*smooth));
   }
   function sourceFrame(time=0){
-    if(!state.media) return null;
+    const source=sourceDrawable(); if(!source) return null;
     const [mw,mh]=mediaDimensions(), [outputW,outputH]=outputDimensions(), requestedCell=effectiveGlyphSize(time), maxW=220, maxH=260;
     // Clamp only the *maximum* analysis grid. Never enlarge it again: larger
     // Glyph Size must produce genuinely fewer, bigger characters.
     const [aw,ah]=fit(Math.ceil(outputW/requestedCell),Math.ceil(outputH/requestedCell),maxW,maxH); state.analyserW=aw; state.analyserH=ah; sample.width=aw; sample.height=ah;
-    sctx.fillStyle="#000"; sctx.fillRect(0,0,aw,ah); drawCover(sctx,state.media,mw,mh,aw,ah);
+    sctx.fillStyle="#000"; sctx.fillRect(0,0,aw,ah); drawCover(sctx,source,mw,mh,aw,ah);
     try { return sctx.getImageData(0,0,aw,ah); } catch { return null; }
   }
   function overlay(time,w,h,cell,cellH){
@@ -467,6 +523,7 @@
   }
   function render(now=performance.now()){
     requestAnimationFrame(render);
+    refreshSourceTimeline(now);
     if(state.textMode) return;
     if(!state.imageReady) return;
     const frameInterval=1000/Number(ui.fps.value);
@@ -506,15 +563,39 @@
     drawBorder(w,h,t); drawPoster(w,h);
   }
   function load(file){
-    if(!file) return; if(state.fileURL) URL.revokeObjectURL(state.fileURL); state.fileURL=URL.createObjectURL(file); state.imageReady=false;
+    if(!file) return; releaseGifFrames(); if(state.fileURL) URL.revokeObjectURL(state.fileURL); state.fileURL=URL.createObjectURL(file); state.imageReady=false;
     // Every new source begins as an inspectable still, regardless of any form
     // values the browser restored from a previous session.
     leaveTextCanvas(); ui.previewEngine.value="text";
-    ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; ui.aspectRatio.value="source"; ui.outputResolution.value="native"; fitViewport(false); updateReadouts(); state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; setPlayLabel("PLAY"); stopResolveAudio();
-    const isVideo=file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv)$/i.test(file.name); const el=isVideo?document.createElement("video"):new Image();
-    state.media=el; state.sourceKind=isVideo?"video":"image"; el.src=state.fileURL; status.textContent=`LOADING // ${file.name.toUpperCase()}`;
-    const ready=()=>{ state.imageReady=true; empty.hidden=true; state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; setPlayLabel("PLAY"); state.started=performance.now(); resetHistory(); status.textContent=`${isVideo?"VIDEO":"IMAGE"} // ${file.name.toUpperCase()}`; transport.textContent="STATIC PREVIEW — PICK A STYLE TO ANIMATE"; if(isVideo){el.loop=true;el.muted=true;el.pause();el.currentTime=0;} };
-    if(isVideo){ el.addEventListener("loadeddata",ready,{once:true}); el.addEventListener("error",()=>status.textContent="UNSUPPORTED VIDEO CODEC",{once:true}); } else { el.onload=ready; el.onerror=()=>status.textContent="UNSUPPORTED IMAGE"; }
+    ui.mode.value="direct"; ui.effect.value="none"; ui.outputScale.value="100"; ui.aspectRatio.value="source"; ui.outputResolution.value="native"; fitViewport(false); updateReadouts(); state.playing=false; state.completed=false; state.pausedElapsed=0; state.media=null; state.sourceKind=null; state.sourcePlaying=false; state.sourceElapsed=0; state.sourceStarted=0; state.sourceDuration=0; state.sourceScrubbing=false; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; setPlayLabel("PLAY"); stopResolveAudio(); sourceTimeline.hidden=true;
+    const isVideo=file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv)$/i.test(file.name), isGif=file.type==="image/gif" || /\.gif$/i.test(file.name);
+    const ready=kind=>{ state.imageReady=true; empty.hidden=true; state.playing=false; state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; setPlayLabel("PLAY"); state.started=performance.now(); resetHistory(); status.textContent=`${kind} // ${file.name.toUpperCase()}`; transport.textContent=playableSource()?"SOURCE PAUSED — PLAY SOURCE OR CHOOSE A BUILD":"STATIC PREVIEW — PICK A STYLE TO ANIMATE"; refreshSourceTimeline(); };
+    status.textContent=`LOADING // ${file.name.toUpperCase()}`;
+    if(isVideo){
+      const el=document.createElement("video"); state.media=el; state.sourceKind="video"; el.src=state.fileURL; el.loop=true; el.muted=true; el.preload="auto";
+      el.addEventListener("loadeddata",()=>{el.pause();el.currentTime=0;ready("VIDEO");},{once:true});
+      el.addEventListener("play",()=>{state.sourcePlaying=true;refreshSourceTimeline();});
+      el.addEventListener("pause",()=>{state.sourcePlaying=false;refreshSourceTimeline();});
+      el.addEventListener("error",()=>status.textContent="UNSUPPORTED VIDEO CODEC",{once:true});
+      return;
+    }
+    if(isGif && "ImageDecoder" in window){
+      (async()=>{
+        try{
+          const decoder=new ImageDecoder({data:await file.arrayBuffer(),type:"image/gif"}); await decoder.tracks.ready;
+          const track=decoder.tracks.selectedTrack, frameCount=Math.min(300,Math.max(1,Number(track.frameCount)||1)); let elapsed=0; const frames=[];
+          for(let index=0;index<frameCount;index++){
+            const decoded=await decoder.decode({frameIndex:index,completeFramesOnly:true}), bitmap=await createImageBitmap(decoded.image), duration=Math.max(.02,(Number(decoded.image.duration)||100000)/1_000_000);
+            decoded.image.close(); elapsed+=duration; frames.push({bitmap,end:elapsed});
+          }
+          state.media=frames[0].bitmap; state.gifFrames=frames; state.sourceKind="gif"; state.sourceDuration=elapsed; ready("GIF");
+        }catch{
+          const image=new Image(); state.media=image; state.sourceKind="image"; image.src=state.fileURL; image.onload=()=>{ready("GIF — NATIVE PLAYBACK");transport.textContent="GIF LOADED — THIS BROWSER COULD NOT EXPOSE A SCRUB TIMELINE";}; image.onerror=()=>status.textContent="UNSUPPORTED GIF";
+        }
+      })();
+      return;
+    }
+    const image=new Image(); state.media=image; state.sourceKind="image"; image.src=state.fileURL; image.onload=()=>ready(isGif?"GIF — NATIVE PLAYBACK":"IMAGE"); image.onerror=()=>status.textContent="UNSUPPORTED IMAGE";
   }
   function applyCharacterLibrary(name){
     if(name!=="custom" && characterLibraries[name]) ui.charset.value=characterLibraries[name];
@@ -535,7 +616,7 @@
     if(announce) transport.textContent="HARD BLACK / WHITE — PURE #000 + #FFF";
   }
   function markPaletteCustom(){ if(ui.palettePreset.value!=="source") ui.palettePreset.value="custom"; }
-  function restart(){ state.started=performance.now(); state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; setPlayLabel(state.playing?"PAUSE":"PLAY"); if(state.sourceKind==="video"&&state.media){state.media.currentTime=0;if(state.playing)state.media.play().catch(()=>{});} syncResolveAudio(); transport.textContent=state.playing?"RESTARTED — BUILDING":"RESTARTED — PRESS PLAY"; }
+  function restart(){ state.started=performance.now(); state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; setPlayLabel("PLAY"); stopResolveAudio(); transport.textContent="BUILD RESET — SOURCE TIMELINE UNCHANGED"; }
   function drawTextCanvasFrame(){
     const text=readTextCanvas(), lines=text.split("\n"), longest=Math.max(1,...lines.map(line=>line.length));
     const [w,h]=outputDimensions(), padding=Math.round(Math.min(w,h)*.055), maxLine=Math.max(1,w-padding*2), maxHeight=Math.max(1,h-padding*2);
@@ -577,7 +658,7 @@
   function downloadHTML(){ const text=$("ascii-export").value||currentAsciiText(); $("ascii-export").value=text; const escaped=text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); downloadText("glyphshift-frame.html",`<!doctype html><meta charset="utf-8"><title>GLYPHSHIFT</title><style>body{margin:0;padding:2rem;background:${ui.background.value};color:${ui.foreground.value};font:12px/1 "Courier New",Courier,monospace;white-space:pre;font-kerning:none;font-variant-ligatures:none}</style><pre>${escaped}</pre>`,"text/html"); }
   function downloadMarkdown(){ const text=$("ascii-export").value||currentAsciiText(); $("ascii-export").value=text; downloadText("glyphshift-frame.md",`\`\`\`text\n${text}\n\`\`\``); }
   function downloadANSI(){ const text=$("ascii-export").value||currentAsciiText(); $("ascii-export").value=text; downloadText("glyphshift-frame-ansi.txt",`\u001b[38;2;245;245;245m${text}\u001b[0m`); }
-  async function record(){ if(!state.imageReady||state.recording)return; if(!isAnimated()){ transport.textContent="CHOOSE A BUILD STYLE BEFORE EXPORTING VIDEO"; return; } if(!window.MediaRecorder){transport.textContent="MEDIARECORDER NOT AVAILABLE";return;} state.recording=true; state.playing=true; state.completed=false; $("record").classList.add("recording"); $("record").textContent="● RECORDING…"; restart();
+  async function record(){ if(!state.imageReady||state.recording)return; if(!isAnimated()){ transport.textContent="CHOOSE A BUILD STYLE BEFORE EXPORTING VIDEO"; return; } if(!window.MediaRecorder){transport.textContent="MEDIARECORDER NOT AVAILABLE";return;} state.recording=true; $("record").classList.add("recording"); $("record").textContent="● RECORDING…"; startBuild();
     const stream=out.captureStream(Number(ui.fps.value)); let audioStream=null; if(ui.resolveSound.value!=="none"){ await algorithmicEngine(); audioStream=algoCapture?.stream; } audioStream?.getAudioTracks().forEach(track=>stream.addTrack(track)); const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm"; const rec=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8_000_000}); const chunks=[];
     rec.ondataavailable=e=>e.data.size&&chunks.push(e.data); rec.onstop=()=>{ const blob=new Blob(chunks,{type});const a=document.createElement("a");a.download="ascii-motion-build.webm";a.href=URL.createObjectURL(blob);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);state.recording=false;$("record").classList.remove("recording");$("record").textContent="● EXPORT BUILD (WEBM)";transport.textContent="WEBM EXPORTED"; };
     rec.start(); setTimeout(()=>rec.stop(),clipDuration()*1000);
@@ -648,16 +729,18 @@
   [ui.textStartX,ui.textStartY].forEach(control=>control.addEventListener("change",()=>setTextAnchor(control,Number(control.value))));
   [ui.aspectRatio,ui.outputResolution,ui.customResolution,ui.outputScale].forEach(control=>control.addEventListener("input",()=>{ state.lastRender=0; }));
   ui.mode.onchange=()=>{ state.completed=false; state.pausedElapsed=0; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; if(ui.mode.value==="text-typewriter"&&ui.customText.value.trim()){ui.glyphSource.value="text";ui.textLayout.value="flow";ui.previewEngine.value="canvas";leaveTextCanvas();} if(ui.mode.value==="direct"){ state.playing=false; stopResolveAudio(); setPlayLabel("PLAY"); transport.textContent="STATIC PREVIEW"; } else transport.textContent=ui.mode.value==="text-typewriter"?"TEXT TYPEWRITER READY — PRESS PLAY":"STYLE SET — PRESS PLAY"; };
-  const toggleBuildPlayback=()=>{
+  const startBuild=()=>{
     if(!isAnimated()){ state.playing=false; state.completed=false; state.pausedElapsed=0; setPlayLabel("PLAY"); stopResolveAudio(); transport.textContent="STATIC PREVIEW — CHOOSE A BUILD STYLE TO ANIMATE"; return; }
-    if(state.completed){ state.completed=false; state.pausedElapsed=0; state.started=performance.now(); state.playing=true; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false; }
-    else if(state.playing){ state.pausedElapsed+=(performance.now()-state.started)/1000; state.playing=false; }
-    else { state.started=performance.now(); state.playing=true; }
-    setPlayLabel(state.playing?"PAUSE":"PLAY"); transport.textContent=state.playing?"BUILDING":"PAUSED";
-    if(state.sourceKind==="video") state.playing?state.media.play():state.media.pause(); syncResolveAudio();
+    state.completed=false; state.pausedElapsed=0; state.started=performance.now(); state.playing=true; state.lastRender=0; state.lastSoundStep=-1; state.lastVisibleGlyphs=0; state.generationTicks=0; state.firstTick=true; state.finalTick=false;
+    setPlayLabel("PAUSE"); transport.textContent="BUILDING FROM FRAME ONE — SOURCE TIMELINE UNCHANGED"; syncResolveAudio();
   };
-  $("play").onclick=toggleBuildPlayback;
-  $("header-play").onclick=toggleBuildPlayback;
+  $("play").onclick=startBuild;
+  $("header-play").onclick=startBuild;
+  sourcePlay.onclick=toggleSourcePlayback;
+  sourceRestart.onclick=restartSource;
+  sourceSeek.addEventListener("pointerdown",()=>state.sourceScrubbing=true);
+  sourceSeek.addEventListener("pointerup",()=>{state.sourceScrubbing=false;refreshSourceTimeline();});
+  sourceSeek.addEventListener("input",()=>setSourceTime(sourceSeek.value));
   ui.resolveSound.onchange=()=>syncResolveAudio();
   ui.previewEngine.onchange=()=>{
     if(ui.previewEngine.value==="manual"){

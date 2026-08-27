@@ -18,7 +18,7 @@
       <div class="top-actions">
         <button id="undo" class="ghost" title="Undo last edit (Ctrl+Z)">← UNDO</button>
         <button id="redo" class="ghost" title="Redo last edit (Ctrl+Shift+Z)">REDO →</button>
-        <button id="header-play" class="ghost" title="Play, pause, or replay the current build">▶ PLAY</button>
+        <button id="header-play" class="ghost" title="Start the current ASCII build from frame one">▶ BUILD</button>
         <button id="toggle-ui" class="ghost" title="Hide control panel">HIDE UI</button>
       </div>
     </header>
@@ -42,6 +42,15 @@
           </div>
           <div class="stage-readout"><span id="dimension-readout">960 × 540</span><span id="fps-readout">30 FPS</span></div>
         </div>
+        <section id="source-timeline" class="source-timeline" hidden aria-label="Source media timeline">
+          <div class="source-timeline-head"><span>SOURCE TIMELINE</span><output id="source-time-readout">0:00 / 0:00</output></div>
+          <div class="source-timeline-controls">
+            <button id="source-restart" class="ghost" type="button" title="Return source media to the first frame">↺</button>
+            <button id="source-play" class="primary" type="button">▶ PLAY SOURCE</button>
+            <input id="source-seek" type="range" min="0" max="1" step="0.01" value="0" aria-label="Seek source timeline" />
+          </div>
+          <p id="source-timeline-note" class="source-timeline-note">SOURCE IS PAUSED — SCRUB OR PRESS PLAY</p>
+        </section>
         <input id="file-input" class="file-input" type="file" accept="image/*,video/*" aria-label="Choose an image, GIF, or video" />
       </section>
 
@@ -247,8 +256,8 @@
         <section class="panel transport-panel" data-page="output">
           <div class="panel-title">OUTPUT</div>
           <div class="transport">
-            <button id="play" class="primary">PLAY</button>
-            <button id="restart" class="ghost">RESTART</button>
+            <button id="play" class="primary">▶ BUILD</button>
+            <button id="restart" class="ghost">↺ BUILD</button>
             <button id="snapshot" class="ghost">PNG FRAME</button>
           </div>
           <div class="panel-subtitle">TIMELINE <span>SECONDS</span></div>
